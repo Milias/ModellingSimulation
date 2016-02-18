@@ -6,6 +6,7 @@ CPP = $(wildcard *.cpp) $(wildcard ../Shared/*.cpp)
 OBJ = $(notdir $(CPP:.cpp=.o))
 
 all : $(OBJ)
+	mkdir -p bin
 	$(CXX) $(CXXFLAGS) $(OBJ) -o $(TARGET) $(LDFLAGS)
 
 %.o : %.cpp

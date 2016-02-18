@@ -3,12 +3,6 @@
 
 int main(int argc, char ** argv)
 {
-  std::function<std::vector<int>(void)> f = []() { std::vector<int> a = {1, 2, 3}; return a; };
-  LuaManager lua;
-  lua.InitializeLua();
-  lua.RegisterFunction("f", f);
-  lua.RunFile("lua/script.lua");
-
   DefaultClock gc;
   double T = 0.0;
 
@@ -29,6 +23,6 @@ int main(int argc, char ** argv)
     std::cout << primes[i] << std::endl;
   }
 
-  //printf("N: %d, elapsed: %2.7fs\n",bound,T);
+  printf("N: %d, elapsed: %2.7fs\n",bound,T);
   return 0;
 }
