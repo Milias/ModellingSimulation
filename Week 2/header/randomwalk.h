@@ -177,10 +177,8 @@ public:
   ~RandomWalk();
 
   Point RandomUnitaryVector();
-  Point * SimpleRandomWalk(double delta, uint32_t steps);
-  double * SimpleComputeRSquared(double delta, uint32_t steps, uint32_t nwalks);
-  Point * PeriodicRandomWalk(double delta, uint32_t steps, double size);
-  double * PeriodicComputeRSquared(double delta, uint32_t steps, uint32_t nwalks, double size);
+  Point * ComputeRandomWalk(double delta, uint32_t steps, double size = 0.0);
+  double * ComputeRSquared(double delta, uint32_t steps, uint32_t nwalks, double size = 0.0);
 
   void SaveWalkData(char const * filename);
   void SaveRData(char const * filename);

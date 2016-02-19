@@ -21,70 +21,37 @@ Point RandomWalk::RandomUnitaryVector()
     for (uint32_t i = 0; i < Dimensions; i++) {
       r[i] = 1.0 - 2.0 * RandomDouble();
     }
-    s = r*r;
+    s = r * r;
   }
-  r /= s;
+  r /= sqrt(s);
   return r;
 }
 
-Point * RandomWalk::SimpleRandomWalk(double delta, uint32_t steps)
+Point * RandomWalk::ComputeRandomWalk(double delta, uint32_t steps, double size)
 {
   if (StepLocations) delete[] StepLocations;
   StepLocations = new Point[steps];
+
   StepLength = delta;
+  BoxSize = size;
+  StepNumber = steps;
 
   StepLocations[0] = RandomUnitaryVector() * StepLength;
-  for (uint32_t i = 1; i < steps; i++) {
-    StepLocations[i] = RandomUnitaryVector() * StepLength + StepLocations[i - 1];
-  }
 
-  StepNumber = steps;
-  return StepLocations;
-}
-
-double * RandomWalk::SimpleComputeRSquared(double delta, uint32_t steps, uint32_t nwalks)
-{
-  if (RSquared) delete[] RSquared;
-  RSquared = new double[steps];
-
-  WalksNumber = nwalks;
-  StepLength = delta;
-  StepNumber = steps;
-  BoxSize = 0.0;
-
-  Point * walk;
-  for (uint32_t i = 0; i < steps; i++) RSquared[i] = 0.0;
-
-  for (uint32_t i = 0; i < nwalks; i++) {
-    walk = SimpleRandomWalk(delta, steps);
-    for (uint32_t j = 0; j < steps; j++) {
-      RSquared[j] += sqrt(walk[j]*walk[j]);
+  if (size > 0) {
+    for (uint32_t i = 1; i < steps; i++) {
+      StepLocations[i] = (RandomUnitaryVector() * StepLength + StepLocations[i - 1]) % (BoxSize / 2.0);
+    }
+  } else {
+    for (uint32_t i = 1; i < steps; i++) {
+      StepLocations[i] = (RandomUnitaryVector() * StepLength + StepLocations[i - 1]);
     }
   }
 
-  for (uint32_t i = 0; i < steps; i++) RSquared[i] /= nwalks;
-
-  return RSquared;
-}
-
-Point * RandomWalk::PeriodicRandomWalk(double delta, uint32_t steps, double size)
-{
-  if (StepLocations) delete[] StepLocations;
-  StepLocations = new Point[steps];
-
-  StepLength = delta;
-  BoxSize = size;
-  StepNumber = steps;
-
-  StepLocations[0] = RandomUnitaryVector() * StepLength;
-  for (uint32_t i = 1; i < steps; i++) {
-    StepLocations[i] = (RandomUnitaryVector() * StepLength + StepLocations[i - 1]) % (BoxSize / 2.0);
-  }
-
   return StepLocations;
 }
 
-double * RandomWalk::PeriodicComputeRSquared(double delta, uint32_t steps, uint32_t nwalks, double size)
+double * RandomWalk::ComputeRSquared(double delta, uint32_t steps, uint32_t nwalks, double size)
 {
   if (RSquared) delete[] RSquared;
   RSquared = new double[steps];
@@ -98,7 +65,7 @@ double * RandomWalk::PeriodicComputeRSquared(double delta, uint32_t steps, uint3
 
   Point * walk;
   for (uint32_t i = 0; i < nwalks; i++) {
-    walk = PeriodicRandomWalk(delta, steps, size);
+    walk = ComputeRandomWalk(delta, steps, size);
     for (uint32_t j = 0; j < steps; j++) {
       RSquared[j] += sqrt(walk[j]*walk[j]);
     }
