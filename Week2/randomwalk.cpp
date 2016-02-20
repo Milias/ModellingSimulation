@@ -1,77 +1,89 @@
 #include "randomwalk.h"
 
-RandomWalk::RandomWalk(uint32_t dim) : Dimensions(dim)
+RandomWalk::RandomWalk(uint32_t dim) : Dimensions(dim), StepLocations(NULL), RSquared(NULL)
 {
-  Generator.seed(time(NULL));
-  RandomRealdistribution = std::uniform_real_distribution<double>(0.0,1.0);
+  Generator.seed(DefaultClock::now().time_since_epoch().count());
+  RandomRealDistribution = std::uniform_real_distribution<double>(-1.0,1.0);
 
-  RandomDouble = std::bind(RandomRealdistribution, Generator);
+  RandomDouble = std::bind(RandomRealDistribution, Generator);
 }
 
 RandomWalk::~RandomWalk()
 {
   if (StepLocations) delete[] StepLocations;
+  if (RSquared) delete[] RSquared;
 }
 
 Point RandomWalk::RandomUnitaryVector()
 {
   Point r(Dimensions);
+  return RandomUnitaryVector(r);
+}
+
+Point & RandomWalk::RandomUnitaryVector(Point & p)
+{
   double s = 10;
   for(; s > 1;) {
     for (uint32_t i = 0; i < Dimensions; i++) {
-      r[i] = 1.0 - 2.0 * RandomDouble();
+      p[i] = RandomDouble();
     }
-    s = r * r;
+    s = p * p;
   }
-  r /= sqrt(s);
-  return r;
+  p /= sqrt(s);
+  return p;
 }
 
-Point * RandomWalk::ComputeRandomWalk(double delta, uint32_t steps, double size)
+Point * RandomWalk::ComputeRandomWalk(uint32_t steps, double size)
 {
-  if (StepLocations) delete[] StepLocations;
-  StepLocations = new Point[steps];
+  if (StepLocations == NULL || StepNumber != steps) {
+    delete[] StepLocations;
+    StepLocations = new Point[steps];
+  }
 
-  StepLength = delta;
-  BoxSize = size;
   StepNumber = steps;
+  BoxSize = size;
 
-  StepLocations[0] = RandomUnitaryVector() * StepLength;
+  for (uint32_t i = 0; i < StepNumber; i++) { StepLocations[i].Init(Dimensions); }
 
-  if (size > 0) {
-    for (uint32_t i = 1; i < steps; i++) {
-      StepLocations[i] = (RandomUnitaryVector() * StepLength + StepLocations[i - 1]) % (BoxSize / 2.0);
+  RandomUnitaryVector(StepLocations[0]);
+  if (BoxSize > 0) {
+    for (uint32_t i = 1; i < StepNumber; i++) {
+      RandomUnitaryVector(StepLocations[i]);
+      StepLocations[i] += StepLocations[i - 1];
+      StepLocations[i] %= BoxSize / 2.0;
     }
   } else {
-    for (uint32_t i = 1; i < steps; i++) {
-      StepLocations[i] = (RandomUnitaryVector() * StepLength + StepLocations[i - 1]);
+    for (uint32_t i = 1; i < StepNumber; i++) {
+      RandomUnitaryVector(StepLocations[i]);
+      StepLocations[i] += StepLocations[i - 1];
     }
   }
 
   return StepLocations;
 }
 
-double * RandomWalk::ComputeRSquared(double delta, uint32_t steps, uint32_t nwalks, double size)
+double * RandomWalk::ComputeRSquared(uint32_t steps, uint32_t nwalks, double size)
 {
-  if (RSquared) delete[] RSquared;
-  RSquared = new double[steps];
+  if (RSquared == NULL || StepNumber != steps) {
+    delete[] RSquared;
+    RSquared = new double[steps];
+  }
 
   WalksNumber = nwalks;
-  StepLength = delta;
   StepNumber = steps;
   BoxSize = size;
 
-  for (uint32_t i = 0; i < steps; i++) RSquared[i] = 0.0;
+  for (uint32_t i = 0; i < StepNumber; i++) RSquared[i] = 0.0;
 
   Point * walk;
-  for (uint32_t i = 0; i < nwalks; i++) {
-    walk = ComputeRandomWalk(delta, steps, size);
-    for (uint32_t j = 0; j < steps; j++) {
-      RSquared[j] += sqrt(walk[j]*walk[j]);
+  for (uint32_t i = 0; i < WalksNumber; i++) {
+    walk = ComputeRandomWalk(StepNumber, BoxSize);
+    for (uint32_t j = 0; j < StepNumber; j++) {
+      RSquared[j] += walk[j]*walk[j];
     }
   }
 
-  for (uint32_t i = 0; i < steps; i++) RSquared[i] /= nwalks;
+  for (uint32_t i = 0; i < steps; i++) RSquared[i] /= WalksNumber;
 
   return RSquared;
 }
@@ -80,8 +92,8 @@ void RandomWalk::SaveWalkData(char const * filename)
 {
   Json::Value Root;
   Root["Type"] = "Walk Data";
+  Root["Legend"] = BoxSize > 0.0 ? "With periodic boundary conditions" : "Without periodic boundary conditions";
   Root["Dimensions"] = Dimensions;
-  Root["StepLength"] = StepLength;
   Root["StepNumber"] = StepNumber;
   Root["BoxSize"] = BoxSize;
 
@@ -105,8 +117,8 @@ void RandomWalk::SaveRData(char const * filename)
 {
   Json::Value Root;
   Root["Type"] = "R Squared Data";
+  Root["Legend"] = BoxSize > 0.0 ? "With periodic boundary conditions" : "Without periodic boundary conditions";
   Root["Dimensions"] = Dimensions;
-  Root["StepLength"] = StepLength;
   Root["WalksNumber"] = WalksNumber;
   Root["StepNumber"] = StepNumber;
   Root["BoxSize"] = BoxSize;

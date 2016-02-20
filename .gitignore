@@ -1,4 +1,7 @@
 *.o
 .DS_Store
 *.pdf
+*/bin
+*/data
 */bin/*
+*/data/*

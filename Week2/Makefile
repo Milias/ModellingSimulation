@@ -1,17 +1,23 @@
-CXXFLAGS += -std=c++14 -pedantic -Wall -g -Iheader -I../Shared/json -I../Shared/header
+CXXFLAGS += -std=c++14 -pedantic -Wall -O3 -Iheader -I../Shared/json -I../Shared/header
 TARGET = bin/week2
 
-CPP = $(wildcard *.cpp) $(wildcard ../Shared/*.cpp)
-OBJ = $(notdir $(CPP:.cpp=.o))
+CPP = $(wildcard ../Shared/*.cpp) $(wildcard *.cpp)
+OBJ = $(CPP:.cpp=.o)
 
-all : $(OBJ)
-	mkdir -p bin
+all : bin data $(OBJ)
 	$(CXX) $(CXXFLAGS) $(OBJ) -o $(TARGET) $(LDFLAGS)
 
 %.o : %.cpp
-	$(CXX) $(CXXFLAGS) -c $(CPP) $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -c $^ $(LDFLAGS) -o $@
 
-.PHONY = clean
+bin :
+	mkdir -p bin
+
+data :
+	mkdir -p data
+
+.PHONY : clean
 clean :
 	rm -f $(TARGET)
 	rm -f *.o
+	rm -f ../Shared/*.o

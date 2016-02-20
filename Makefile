@@ -1,4 +1,13 @@
-TARGETS = $(wildcard Week\ *)
+TARGETS = $(wildcard Week*)
 
-all: $(TARGETS)
-	make -C @^
+.PHONY : all
+all : $(addprefix d,$(TARGETS))
+
+dWeek% :
+	$(MAKE) -C $(subst d,,$@)
+
+.PHONY : clean
+clean : $(addprefix c,$(TARGETS))
+
+cWeek% :
+	$(MAKE) -C $(subst c,,$@) clean

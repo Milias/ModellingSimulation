@@ -23,6 +23,6 @@ int main(int argc, char ** argv)
     std::cout << primes[i] << std::endl;
   }
 
-  printf("N: %d, elapsed: %2.7fs\n",bound,T);
+  std::cout << "N: " << bound << ", elapsed: " << T << " s.\n";
   return 0;
 }
