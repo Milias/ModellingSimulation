@@ -1,4 +1,4 @@
-CXXFLAGS += -std=c++14 -pedantic -Wall -O3 -Iheader -I../Shared/json -I../Shared/header
+CXXFLAGS += -std=c++14 -pedantic -Wall -O4 -Iheader -I../Shared/json -I../Shared/header
 TARGET = bin/week1
 
 CPP = $(wildcard ../Shared/*.cpp) $(wildcard *.cpp)
@@ -18,3 +18,6 @@ clean :
 	rm -f $(TARGET)
 	rm -f *.o
 	rm -f ../Shared/*.o
+
+.PHONY : latex
+latex :

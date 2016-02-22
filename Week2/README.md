@@ -1,4 +1,4 @@
-# Week 2 Assignment
+# Week 2: Random Walk
 
 1. Compute Pi by a hit and miss method.
 2. Perform random walks in two and three dimensions, computing <R^2(N)> with and without periodic boundary conditions.

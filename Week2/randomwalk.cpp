@@ -24,6 +24,8 @@ Point & RandomWalk::RandomUnitaryVector(Point & p)
 {
   double s = 10;
   for(; s > 1;) {
+    // Generates random vectors in [0, 1]^N until
+    // one lies inside a sphere of radius one.
     for (uint32_t i = 0; i < Dimensions; i++) {
       p[i] = RandomDouble();
     }

@@ -1,7 +1,15 @@
 *.o
 .DS_Store
-*.pdf
+LectureNotes.pdf
 */bin
 */data
 */bin/*
 */data/*
+*.aux
+*.dvi
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.ps
+.fuse_hidden*
