@@ -21,7 +21,6 @@ class RandomWalk
 private:
   std::default_random_engine Generator;
   std::uniform_real_distribution<double> RandomRealDistribution;
-
   std::function<double()> RandomDouble;
 
   double BoxSize = 0.0;

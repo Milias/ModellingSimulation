@@ -1,15 +1,16 @@
 TARGETS = $(wildcard Week*)
 
 .PHONY : all
-all : $(addprefix d,$(TARGETS))
+all : $(addprefix a,$(TARGETS))
 
-dWeek% :
-	$(MAKE) -C $(subst d,,$@)
+aWeek% :
+	$(MAKE) -C $(subst a,,$@)
 
 .PHONY : clean
 clean : $(addprefix c,$(TARGETS))
 
 cWeek% :
+	$(MAKE) -C Shared clean
 	$(MAKE) -C $(subst c,,$@) clean
 
 .PHONY : latex

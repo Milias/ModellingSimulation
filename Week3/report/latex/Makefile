@@ -11,4 +11,4 @@ all : $(PDF)
 
 .PHONY : clean
 clean :
-	rm -f *.ps *.dvi *.log *.toc *.aux *.pdf *.fdb* *.fls *.out
+	rm -f *.ps *.dvi *.log *.toc *.aux *.fdb* *.fls *.out
