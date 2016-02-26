@@ -60,6 +60,11 @@ struct Point
     if (Values) delete[] Values;
   }
 
+  void Free() {
+    if (Values) delete[] Values;
+    N = 0;
+  }
+
   Point & Init(uint32_t dim, double a) {
     N = dim;
     Values = new double[N];
