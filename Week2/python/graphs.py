@@ -17,10 +17,10 @@ def PlotRSquared(f):
   if (data["BoxSize"] > 0.0):
     box = " - Box size: %1.f" % data["BoxSize"]
     fit = lambda x, a, b: a*(1-exp(-b*x))
-    popt, pcov = curve_fit(fit, x, y, p0 = (1.0, 1.0))
-    print("%s, %f" % (f, popt[0]))
-    plt.plot(x, fit(x, *popt), 'r--')
-    plt.plot(x, [popt[0]]*x.size, 'm--')
+    #popt, pcov = curve_fit(fit, x, y, p0 = (1.0, 1.0))
+    #print("%s, %f" % (f, popt[0]))
+    #plt.plot(x, fit(x, *popt), 'r--')
+    #plt.plot(x, [popt[0]]*x.size, 'm--')
 
   plt.title(r"$\langle R^2(N) \rangle$ vs. $N$ in %dD%s" % (data["Dimensions"],box)+"\n"+"Average over $10^{%d}$ walks" % (log10(data["WalksNumber"]),))
   plt.xlabel("N / step")
@@ -52,12 +52,11 @@ def PlotColorMap2(f, b = 200):
   n, bins = histogram((H-a).ravel(), bins=100, density=True)
   plt.bar(bins[:-1], n, (amax(H-a)-amin(H-a))/100.0, color='b')
   fit = lambda x, a, b: a*exp(-b*x**2)
-  popt, pcov = curve_fit(fit, bins[:-1], n, p0=(amax(n), 0.001))
+  #popt, pcov = curve_fit(fit, bins[:-1], n, p0=(amax(n), 0.001))
+  #print(popt)
 
-  print(popt)
-
-  x = linspace(amin(H-a), amax(H-a), 100)
-  l = plt.plot(x, fit(x, *popt), 'r--', linewidth=1)
+  #x = linspace(amin(H-a), amax(H-a), 100)
+  #l = plt.plot(x, fit(x, *popt), 'r--', linewidth=1)
 
   plt.savefig("report/graphs/%s-hist.eps" % f[5:-5])
   plt.close()
@@ -90,14 +89,6 @@ plt.close()
 
 for i in ["data/rsquared3.json", "data/prsquared3.json"]: PlotRSquared(i)
 plt.savefig("report/graphs/rsquared3.eps")
-plt.close()
-
-for i in ["data/rsquared11.json", "data/prsquared11.json"]: PlotRSquared(i)
-plt.savefig("report/graphs/rsquared11.eps")
-plt.close()
-
-for i in ["data/rsquared1.json", "data/prsquared1.json"]: PlotRSquared(i)
-plt.savefig("report/graphs/rsquared1.eps")
 plt.close()
 
 for i in ["data/randomwalk2.json"]: PlotRandomWalk2(i)

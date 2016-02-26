@@ -4,7 +4,6 @@ HitMiss::HitMiss()
 {
   Generator.seed(DefaultClock::now().time_since_epoch().count());
   RandomRealDistribution = std::uniform_real_distribution<double>(-1.0,1.0);
-
   RandomDouble = std::bind(RandomRealDistribution, Generator);
 }
 

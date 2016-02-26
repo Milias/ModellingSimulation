@@ -11,6 +11,9 @@
 #include <random>
 #include <iostream>
 #include <fstream>
+// uncomment to disable assert()
+// #define NDEBUG
+#include <cassert>
 
 // ThirdPary
 #include "json.h"
@@ -82,6 +85,13 @@ struct Point
   Point & operator=(double a) {
     for (uint32_t i = 0; i < N; i++) {
       Values[i] = a;
+    }
+    return *this;
+  }
+
+  Point & operator=(double * p) {
+    for (uint32_t i = 0; i < N; i++) {
+      Values[i] = p[i];
     }
     return *this;
   }
@@ -191,16 +201,27 @@ struct Point
     Small steps compared to "a" are assumed.
   */
   Point operator%(double a) {
-    Point result(N);
-    for (uint32_t i = 0; i < N; i++) {
-      result[i] = (Values[i] > a ? -2*a+Values[i] : (Values[i] < -a ? 2*a+Values[i] : Values[i]));
-    }
+    Point result(*this);
+    result %= a;
     return result;
   }
 
   Point & operator%=(double a) {
     for (uint32_t i = 0; i < N; i++) {
-      Values[i] = (Values[i] > a ? -2*a+Values[i] : (Values[i] < -a ? 2*a+Values[i] : Values[i]));
+      Values[i] = (Values[i] > a ? Values[i]-(1+std::trunc(Values[i]/a))*a : (Values[i] < -a ? (1+std::trunc(-Values[i]/a))*a+Values[i] : Values[i]));
+    }
+    return *this;
+  }
+
+  Point operator%(const Point & p) {
+    Point result(*this);
+    result %= p;
+    return result;
+  }
+
+  Point & operator%=(const Point & p) {
+    for (uint32_t i = 0; i < N; i++) {
+      Values[i] = (Values[i] > p[i] ? Values[i]-(1+std::trunc(Values[i]/p[i]))*p[i] : (Values[i] < -p[i] ? (1+std::trunc(-Values[i]/p[i]))*p[i]+Values[i] : Values[i]));
     }
     return *this;
   }

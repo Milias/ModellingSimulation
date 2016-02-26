@@ -16,7 +16,6 @@ class HitMiss
 private:
   std::default_random_engine Generator;
   std::uniform_real_distribution<double> RandomRealDistribution;
-
   std::function<double()> RandomDouble;
 
   uint32_t Hits = 0, Total = 0, ErrorInit = 10, ErrorLimit = 32;

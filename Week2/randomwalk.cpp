@@ -4,7 +4,6 @@ RandomWalk::RandomWalk(uint32_t dim) : Dimensions(dim), StepLocations(NULL), RSq
 {
   Generator.seed(DefaultClock::now().time_since_epoch().count());
   RandomRealDistribution = std::uniform_real_distribution<double>(-1.0,1.0);
-
   RandomDouble = std::bind(RandomRealDistribution, Generator);
 }
 
@@ -109,9 +108,9 @@ void RandomWalk::SaveWalkData(char const * filename)
     }
   }
 
-  Json::StyledStreamWriter writer;
+  Json::FastWriter writer;
   std::ofstream savefile(filename);
-  writer.write(savefile, Root);
+  savefile << writer.write(Root);
   savefile.close();
 }
 
@@ -131,8 +130,8 @@ void RandomWalk::SaveRData(char const * filename)
     Root["Data"][i].append(RSquared[i]);
   }
 
-  Json::StyledStreamWriter writer;
+  Json::FastWriter writer;
   std::ofstream savefile(filename);
-  writer.write(savefile, Root);
+  savefile << writer.write(Root);
   savefile.close();
 }

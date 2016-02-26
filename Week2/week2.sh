@@ -12,7 +12,7 @@ echo "Random walks in 2D"
 echo "Random walk, steps = 10000, w/o bc"
 ./bin/week2 -walk 2 10000 data/randomwalk2.json
 echo "Random walk, steps = 10000, w/ bc, box = 5.0"
-./bin/week2 -pwalk 2 10000 10.0 data/prandomwalk2.json
+./bin/week2 -pwalk 2 10000000 5.0 data/prandomwalk2.json
 echo "<R^2>, steps = 200, walks = 10000, w/o bc"
 ./bin/week2 -rsquared 2 200 10000 data/rsquared2.json
 echo "<R^2>, steps = 200, walks = 10000, w/ bc, box = 20.0"
