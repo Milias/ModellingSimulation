@@ -81,6 +81,12 @@ struct Point
   }
 
   Point & operator=(const Point & p) {
+    assert(N > 0 && Values != NULL && p.N > 0 && p.Values != NULL);
+    if (p.N != N) {
+      N = p.N;
+      delete[] Values;
+      Values = new double[N];
+    }
     for (uint32_t i = 0; i < N; i++) {
       Values[i] = p[i];
     }
@@ -88,6 +94,7 @@ struct Point
   }
 
   Point & operator=(double a) {
+    assert(N > 0 && Values != NULL);
     for (uint32_t i = 0; i < N; i++) {
       Values[i] = a;
     }
@@ -95,6 +102,7 @@ struct Point
   }
 
   Point & operator=(double * p) {
+    assert(N > 0 && Values != NULL && p != NULL);
     for (uint32_t i = 0; i < N; i++) {
       Values[i] = p[i];
     }
@@ -143,6 +151,14 @@ struct Point
     Point result(N);
     for (uint32_t i = 0; i < N; i++) {
       result[i] = Values[i] - a;
+    }
+    return result;
+  }
+
+  Point operator-() {
+    Point result(N);
+    for (uint32_t i = 0; i < N; i++) {
+      result[i] = -Values[i];
     }
     return result;
   }
@@ -225,8 +241,43 @@ struct Point
   }
 
   Point & operator%=(const Point & p) {
+    double t;
     for (uint32_t i = 0; i < N; i++) {
-      Values[i] = (Values[i] > p[i] ? Values[i]-(1+std::trunc(Values[i]/p[i]))*p[i] : (Values[i] < -p[i] ? (1+std::trunc(-Values[i]/p[i]))*p[i]+Values[i] : Values[i]));
+      t = 2 * p[i];
+      if (Values[i] > p[i]) {
+        Values[i] = - p[i] + std::fmod(std::fabs(p[i] - Values[i]),t);
+      } else if (Values[i] < -p[i]) {
+        Values[i] = p[i] - std::fmod(std::fabs(p[i] + Values[i]),t);
+      }
+    }
+    return *this;
+  }
+
+  /*
+    Periodic boundary conditions.
+      - lp: left point.
+      - rp: right point.
+  */
+  Point & Wrap(const Point & lp, const Point & rp) {
+    double t;
+    for (uint32_t i = 0; i < N; i++) {
+      t = rp[i] - lp[i];
+      if (Values[i] > rp[i]) {
+        Values[i] = lp[i] + std::fmod(std::fabs(rp[i] - Values[i]),t);
+      } else if (Values[i] < lp[i]) {
+        Values[i] = rp[i] - std::fmod(std::fabs(lp[i] - Values[i]),t);
+      }
+    }
+    return *this;
+  }
+
+  Point & Wrap(const Point & rp) {
+    for (uint32_t i = 0; i < N; i++) {
+      if (Values[i] > rp[i]) {
+        Values[i] = std::fmod(std::fabs(rp[i] - Values[i]),rp[i]);
+      } else if (Values[i] < 0) {
+        Values[i] = rp[i] - std::fmod(std::fabs(Values[i]),rp[i]);
+      }
     }
     return *this;
   }

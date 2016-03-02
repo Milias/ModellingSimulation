@@ -40,9 +40,9 @@ void HardSpheres::__LocateSpheres(uint32_t d)
 
 bool HardSpheres::__Overlap(const Point & s1, const Point & s2)
 {
-  Point p(s1);
-  p -= s2;
-  //p %= SystemSize;
+  Point p(s2);
+  p -= s1;
+  p %= SystemSizeHalf;
   return p * p < 4.0 * SphereSize * SphereSize;
 }
 
@@ -112,6 +112,25 @@ Point * HardSpheres::GenerateHexagonal(uint32_t sph_per_dim, double sph_size, do
   return p;
 }
 
+Point * HardSpheres::GenerateFCC(uint32_t dim, uint32_t sph_per_dim, double sph_size, double scale)
+{
+  Point * basis = new Point[dim];
+
+  for (uint32_t i = 0; i < dim; i++) {
+    basis[i].Init(dim);
+  }
+
+  for (uint32_t i = 0; i < dim; i++) {
+    for (uint32_t j = 0; j < dim; j++) {
+      basis[i][j] = i == j ? 0.0 : 0.5;
+    }
+  }
+
+  Point * p = GenerateWithBasis(dim, basis, sph_per_dim, sph_size);
+  delete[] basis;
+  return p;
+}
+
 Point * HardSpheres::GenerateFromFile(char const * filename)
 {
   Json::Value Root;
@@ -173,25 +192,33 @@ void HardSpheres::UpdateParticles(double delta, uint32_t steps, uint32_t save_st
     }
     delete[] SpheresStored;
   }
+
   StepSize = delta;
-  SpheresStored = new Point*[steps/save_step];
-  for (uint32_t i = 0; i < steps/save_step; i++) {
+  SavedSteps = steps/save_step;
+  SpheresStored = new Point*[SavedSteps];
+  for (uint32_t i = 0; i < SavedSteps; i++) {
     SpheresStored[i] = new Point[SpheresNumber];
   }
 
-  SavedSteps = 0;
+  SystemSizeHalf.Free();
+  SystemSizeHalf.Init(Dimensions);
+  SystemSizeHalf = (SystemSize[1] - SystemSize[0]) * 0.5;
+
   Point p(Dimensions), * s;
-  bool allowed;
-  for (uint32_t i = 0; i < steps; i++) {
-    allowed = true;
+  bool allowed = true;
+  uint32_t hits = 0;
+  double rate;
+  for (uint32_t i = 0, step = 0, totalcount = 0; i < steps; i++, totalcount++) {
     // Save spheres
-    if (i % save_step == 0) {
+    if ((save_step > 0 ? i % save_step == 0 : false) && (step < SavedSteps) && allowed) {
       for (uint32_t k = 0; k < SpheresNumber; k++) {
-        SpheresStored[SavedSteps][k].Init(Dimensions);
-        SpheresStored[SavedSteps][k] = Spheres[k];
+        SpheresStored[step][k].Init(Dimensions);
+        SpheresStored[step][k] = Spheres[k];
       }
-      SavedSteps++;
+      step++;
     }
+
+    allowed = true;
 
     // Pick random particle.
     s = Spheres + RandomIntDistribution(Generator);
@@ -200,12 +227,13 @@ void HardSpheres::UpdateParticles(double delta, uint32_t steps, uint32_t save_st
 
     // Move it.
     for (uint32_t k = 0; k < Dimensions; k++) {
-      p += RandomDouble() * StepSize;
+      p[k] += RandomDouble() * StepSize;
     }
+    p.Wrap(SystemSize[0], SystemSize[1]);
 
     // Check overlap. TODO: quadtree / octree ?
     for (uint32_t k = 0; k < SpheresNumber; k++) {
-      if (k == s - Spheres) continue;
+      if (k == s - Spheres) { continue; }
       if (__Overlap(p,Spheres[k])) {
         i--;
         allowed = false;
@@ -214,8 +242,17 @@ void HardSpheres::UpdateParticles(double delta, uint32_t steps, uint32_t save_st
     }
 
     // If not overlaping, move it.
-    if (allowed) *s = p;
+    if (allowed) { *s = p; hits++; }
+    rate = 1.0*hits/(totalcount+1);
+    if (rate < 0.4) { StepSize *= 0.99; }
+    else if (rate > 0.6) { StepSize = std::fmin(std::fmax(SystemSizeHalf[0],SystemSizeHalf[1]), StepSize * 1.01); }
+    if (totalcount % 1000 == 0) {
+      hits = 0;
+      totalcount = 0;
+    }
+    if (StepSize < 0.01) printf("Rate: %1.3f, StepSize: %2.3f\n", rate, StepSize);
   }
+  printf("\n");
 }
 
 void HardSpheres::LoadSpheres(char const * filename)

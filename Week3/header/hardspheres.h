@@ -12,7 +12,7 @@ private:
   uint32_t Dimensions = 0, SpheresNumber = 0, SpheresPerDim = 0, * LocCoefs = NULL, SavedSteps = 0;
   double SphereSize = 0.0, StepSize = 0.0;
 
-  Point * Spheres = NULL, * Basis = NULL, * SphereCursor = NULL, * SystemSize = NULL, ** SpheresStored = NULL;
+  Point * Spheres = NULL, * Basis = NULL, * SphereCursor = NULL, * SystemSize = NULL,  SystemSizeHalf, ** SpheresStored = NULL;
 
   void __LocateSpheres(uint32_t d);
   bool __Overlap(const Point & s1, const Point & s2);
@@ -24,6 +24,7 @@ public:
   Point * GenerateWithBasis(uint32_t dim, Point * basis, uint32_t sph_per_dim, double sph_size);
   Point * GenerateRectangular(uint32_t dim, uint32_t sph_per_dim, double sph_size, double scale = 2.0);
   Point * GenerateHexagonal(uint32_t sph_per_dim, double sph_size, double scale = 2.0);
+  Point * GenerateFCC(uint32_t dim, uint32_t sph_per_dim, double sph_size, double scale = 2.0);
   Point * GenerateFromFile(char const * filename);
 
   void UpdateParticles(double delta, uint32_t steps, uint32_t save_step = 1);

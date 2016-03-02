@@ -32,3 +32,4 @@ clean :
 	rm -f $(TARGET)
 	rm -f *.o
 	$(MAKE) -C $(LATEXDIR) clean
+	$(MAKE) -C ../Shared clean
