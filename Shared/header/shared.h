@@ -21,6 +21,8 @@
 typedef std::chrono::high_resolution_clock DefaultClock;
 typedef std::chrono::time_point<DefaultClock> t_point;
 
+const double pi = 3.14159265359;
+
 /*
   This structure defines an N-dimensional
   point in space, alongside a variety of

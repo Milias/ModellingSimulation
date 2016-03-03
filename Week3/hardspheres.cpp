@@ -89,44 +89,7 @@ Point * HardSpheres::GenerateRectangular(uint32_t dim, uint32_t sph_per_dim, dou
   }
 
   Point * p = GenerateWithBasis(dim, basis, sph_per_dim, sph_size);
-  delete[] basis;
-  return p;
-}
-
-Point * HardSpheres::GenerateHexagonal(uint32_t sph_per_dim, double sph_size, double scale)
-{
-  uint32_t dim = 2;
-  Point * basis = new Point[dim];
-
-  for (uint32_t i = 0; i < dim; i++) {
-    basis[i].Init(dim);
-  }
-
-  basis[0][0] = scale;
-  basis[0][1] = 0.0;
-  basis[1][0] = 0.5 * scale;
-  basis[1][1] = 0.8660254037844386 * scale;
-
-  Point * p = GenerateWithBasis(dim, basis, sph_per_dim, sph_size);
-  delete[] basis;
-  return p;
-}
-
-Point * HardSpheres::GenerateFCC(uint32_t dim, uint32_t sph_per_dim, double sph_size, double scale)
-{
-  Point * basis = new Point[dim];
-
-  for (uint32_t i = 0; i < dim; i++) {
-    basis[i].Init(dim);
-  }
-
-  for (uint32_t i = 0; i < dim; i++) {
-    for (uint32_t j = 0; j < dim; j++) {
-      basis[i][j] = i == j ? 0.0 : 0.5;
-    }
-  }
-
-  Point * p = GenerateWithBasis(dim, basis, sph_per_dim, sph_size);
+  ComputeSystemSize();
   delete[] basis;
   return p;
 }
@@ -180,7 +143,41 @@ Point * HardSpheres::GenerateFromFile(char const * filename)
     }
   }
 
+  ComputeSystemSize();
+
+  SystemSizeHalf.Free();
+  SystemSizeHalf.Init(Dimensions);
+  SystemSizeHalf = (SystemSize[1] - SystemSize[0]) * 0.5;
+
   return Spheres;
+}
+
+void HardSpheres::ComputeSystemSize()
+{
+  if (Spheres == NULL) return;
+
+  if (SystemSize) delete[] SystemSize;
+  SystemSize = new Point[2];
+
+  SystemSize[0].Init(Dimensions);
+  SystemSize[1].Init(Dimensions);
+
+  SystemSize[0] = SystemSize[1] = Spheres[0];
+
+  for (uint32_t i = 1; i < SpheresNumber; i++) {
+    for (uint32_t j = 0; j < Dimensions; j++) {
+      if (Spheres[i][j] > SystemSize[1][j]) {
+        SystemSize[1][j] = Spheres[i][j];
+      } else if (Spheres[i][j] < SystemSize[0][j]) {
+        SystemSize[0][j] = Spheres[i][j];
+      }
+    }
+  }
+
+  for (uint32_t i = 0; i < Dimensions; i++) {
+    SystemSize[0][i] -= SphereSize*1.1;
+    SystemSize[1][i] += SphereSize*1.1;
+  }
 }
 
 void HardSpheres::UpdateParticles(double delta, uint32_t steps, uint32_t save_step)
@@ -200,17 +197,30 @@ void HardSpheres::UpdateParticles(double delta, uint32_t steps, uint32_t save_st
     SpheresStored[i] = new Point[SpheresNumber];
   }
 
+  ComputeSystemSize();
+
   SystemSizeHalf.Free();
   SystemSizeHalf.Init(Dimensions);
   SystemSizeHalf = (SystemSize[1] - SystemSize[0]) * 0.5;
 
+  double vol_cube = 1.0;
+  for (uint32_t i = 0; i < Dimensions; i++) {
+    vol_cube *= SystemSize[1][i]-SystemSize[0][i];
+  }
+
+  double vol_sphere = Dimensions == 3 ? 4*pi/3*std::pow(SphereSize,3) : pi*std::pow(SphereSize,2);
+  PackFraction = SpheresNumber*vol_sphere/vol_cube;
+
+  printf("Packaging fraction: %2.4f\n", PackFraction);
+
   Point p(Dimensions), * s;
   bool allowed = true;
   uint32_t hits = 0;
-  double rate;
+  double rate = 0.0;
   for (uint32_t i = 0, step = 0, totalcount = 0; i < steps; i++, totalcount++) {
     // Save spheres
     if ((save_step > 0 ? i % save_step == 0 : false) && (step < SavedSteps) && allowed) {
+      printf("\rRate: %1.3f, StepSize: %1.3f", rate, StepSize);
       for (uint32_t k = 0; k < SpheresNumber; k++) {
         SpheresStored[step][k].Init(Dimensions);
         SpheresStored[step][k] = Spheres[k];
@@ -243,14 +253,16 @@ void HardSpheres::UpdateParticles(double delta, uint32_t steps, uint32_t save_st
 
     // If not overlaping, move it.
     if (allowed) { *s = p; hits++; }
+
+    //Compute hit ratio and modify step size consequently.
     rate = 1.0*hits/(totalcount+1);
-    if (rate < 0.4) { StepSize *= 0.99; }
-    else if (rate > 0.6) { StepSize = std::fmin(std::fmax(SystemSizeHalf[0],SystemSizeHalf[1]), StepSize * 1.01); }
-    if (totalcount % 1000 == 0) {
+    if (rate < 0.49) { StepSize = std::fmax(StepSize*0.99, 0.001*SphereSize); }
+    else if (rate > 0.51) { StepSize = std::fmin(StepSize * 1.01, 2.0*SphereSize); }
+    if (totalcount % 100 == 0) {
       hits = 0;
       totalcount = 0;
     }
-    if (StepSize < 0.01) printf("Rate: %1.3f, StepSize: %2.3f\n", rate, StepSize);
+    //printf("\rRate: %1.3f, StepSize: %1.8f", rate, StepSize);
   }
   printf("\n");
 }
@@ -303,6 +315,7 @@ void HardSpheres::SaveSpheres(char const * filename)
   Root["SpheresNumber"] = SpheresNumber;
   Root["SpheresPerDim"] = SpheresPerDim;
   Root["SphereSize"] = SphereSize;
+  Root["PackFraction"] = PackFraction;
   Root["FileType"] = "InitialCondition";
 
   for (uint32_t i = 0; i < Dimensions; i++) {
@@ -337,6 +350,7 @@ void HardSpheres::SaveStoredSpheres(char const * filename)
   Root["SphereSize"] = SphereSize;
   Root["SavedSteps"] = SavedSteps;
   Root["StepSize"] = StepSize;
+  Root["PackFraction"] = PackFraction;
   Root["FileType"] = "Evolution";
 
   Root["SystemSize"][0] = Json::Value(Json::arrayValue);
