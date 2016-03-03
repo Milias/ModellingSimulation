@@ -101,4 +101,66 @@ emphstyle={\color{blue}\ttfamily}
   \large \textsc{Francisco García Flórez}
 \end{center}
 
+\section{Hard spheres in two dimensions}
+
+\subsection{Packing fraction}
+
+Firstly, we will study rectangular and hexagonal lattices in two dimensions and compute their packing fractions. In the following representation we have plotted the initial configuration for these two systems:
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.45\textwidth]{../graphs/rectangular.pdf}
+    \includegraphics[width=0.45\textwidth]{../graphs/hexagonal.pdf}
+    \caption{Graphical representation of a rectangular lattice (left) and an hexagonal lattice (right). Boundary limits are shown by a red line.}
+  \end{center}
+\end{figure}
+
+The packing fraction is defined as the ratio of one unit cell's volume and the occupied volume of every particle inside. For the rectangular lattice is straightforward, because the unit cell is just the square around one sphere. Thus, the packing fraction $\eta$ is
+
+$$ \eta = \frac{\pi r^2}{4 r^2} = \frac{\pi}{4} \sim 0.7854 $$
+
+For the hexagonal lattice though, the unit cell contains some part of multiple spheres, but following a similar procedure we can get
+
+$$ \eta = \frac{\pi}{2\sqrt{3}} \sim 0.9069 $$
+
+As expected, the hexagonal lattice is significantly denser.
+
+\subsection{Melting point}
+
+Now, the packing fraction is directly related to the solid-liquid transition in these systems, so let's compute when it happens as a function of $\eta$. For that, we will compute $R^2(N)$ for each particle, average it over all particles to get $\avg{R^2(N)}$ and then take only the last value so it only depends on $\eta$: $\avg{R^2(\eta)}$.
+
+In the following plot we are representing this value for multiple values of the packing fraction:
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.7\textwidth]{../graphs/hexa-melting.pdf}
+    \caption{Graphical representation of $\avg{R^2(\eta)}$ for an hexagonal lattice.}
+  \end{center}
+\end{figure}
+
+It is really easy to see from this plot that the value of $\eta_*$ in the transition is around $\sim 0.67$, as in this point $\avg{R^2(\eta)}$ changes from being constant and almost zero to increase linearly-looking for $\eta < \eta_*$. There is a change in slope at $\eta \sim 0.4$, maybe because of another less significant transition.
+
+\section{Hard spheres in three dimensions}
+
+In this case we will consider the simple cubic (SC) lattice and the face-centered cubic (FCC) lattice, as we can see in the following representation.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.45\textwidth]{../graphs/sc.png}
+    \includegraphics[width=0.45\textwidth]{../graphs/fcc.png}
+    \caption{Graphical representation of an SC lattice (left) and a FCC lattice (right). Boundaries can be seen as a transparent red rectangle.}
+  \end{center}
+\end{figure}
+
+As we did with the hexagonal lattice, we can now compute $\avg{R^2(\eta)}$ and determine $\eta_*$ of the transition. In the following plot this data is represented:
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.7\textwidth]{../graphs/fcc-melting.pdf}
+    \caption{Graphical representation of $\avg{R^2(\eta)}$ for an FCC lattice.}
+  \end{center}
+\end{figure}
+
+In this case we find a value quite similar to the one for the hexagonal lattice, although there are more noise fluctuations so this value is not really precise. A better procedure would be to compute another average over multiple systems, so these fluctuations smooth out.
+
 \end{document}
