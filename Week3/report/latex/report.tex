@@ -163,4 +163,12 @@ As we did with the hexagonal lattice, we can now compute $\avg{R^2(\eta)}$ and d
 
 In this case we find a value quite similar to the one for the hexagonal lattice, although there are more noise fluctuations so this value is not really precise. A better procedure would be to compute another average over multiple systems, so these fluctuations smooth out.
 
+\section{Optimal step size}
+
+Choosing a good value for $\Delta$ in the program is a great way to improve efficiency and accuracy, as not the same step size is useful for every system. We could say that a good trade-off $\Delta$ would be the one that keeps the number of hits and misses while moving particles balanced, or in other words, a fifty percent chance of acceptance $acc$.
+
+There are various ways to achieve this, for example studying the system and plotting $acc(\Delta)$. However, in the program we have implemented a small function to adapt $\Delta$ in response to changes in $acc$.
+
+Basically, to keep $acc \sim 0.5$, we multiply $\Delta$ times 0.9 when $acc < 0.4$ or times 1.1 when $acc > 0.5$, after computing $acc$ as the average of hits and misses in the previous steps.
+
 \end{document}

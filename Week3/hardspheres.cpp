@@ -220,7 +220,7 @@ void HardSpheres::UpdateParticles(double delta, uint32_t steps, uint32_t save_st
   for (uint32_t i = 0, step = 0, totalcount = 0; i < steps; i++, totalcount++) {
     // Save spheres
     if ((save_step > 0 ? i % save_step == 0 : false) && (step < SavedSteps) && allowed) {
-      printf("\rRate: %1.3f, StepSize: %1.3f", rate, StepSize);
+      printf("Rate: %1.3f, StepSize: %1.3f\n", rate, StepSize);
       for (uint32_t k = 0; k < SpheresNumber; k++) {
         SpheresStored[step][k].Init(Dimensions);
         SpheresStored[step][k] = Spheres[k];
@@ -258,11 +258,6 @@ void HardSpheres::UpdateParticles(double delta, uint32_t steps, uint32_t save_st
     rate = 1.0*hits/(totalcount+1);
     if (rate < 0.49) { StepSize = std::fmax(StepSize*0.99, 0.001*SphereSize); }
     else if (rate > 0.51) { StepSize = std::fmin(StepSize * 1.01, 2.0*SphereSize); }
-    if (totalcount % 100 == 0) {
-      hits = 0;
-      totalcount = 0;
-    }
-    //printf("\rRate: %1.3f, StepSize: %1.8f", rate, StepSize);
   }
   printf("\n");
 }
