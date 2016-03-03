@@ -13,3 +13,4 @@ LectureNotes.pdf
 *.out
 *.ps
 .fuse_hidden*
+*.synctex.gz
