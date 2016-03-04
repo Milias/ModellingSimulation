@@ -14,3 +14,6 @@ LectureNotes.pdf
 *.ps
 .fuse_hidden*
 *.synctex.gz
+*/__pycache__
+*/__pycache__/*
+*.pyc

@@ -171,9 +171,10 @@ plt.close()
 PlotMelting(["data/fcc-evolution-%d.json" % i for i in range(1,100)])
 plt.savefig("report/graphs/fcc-melting.eps")
 plt.close()
-"""
+
 if sys.version_info < (3, 0):
   PlotSpheres3("data/sc.json")
   #PlotSphereEvolution3("data/sc-evolution.json")
 else:
   PlotSphereEvolution2("data/hexagonal-evolution.json")
+"""

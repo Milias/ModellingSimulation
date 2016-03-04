@@ -152,7 +152,7 @@ bool HardSpheres::__ChangeVolume()
   }
 
   // Compute acceptance.
-  double acc = std::exp(-Beta*(Pressure*(new_volume - old_volume) - SpheresNumber/Beta*std::log(new_volume/old_volume)));
+  double acc = std::exp(-(BPSigma*(new_volume - old_volume) - SpheresNumber*std::log(new_volume/old_volume)));
 
   // If rejected, recover everything, otherwise proceed
   // with overlap checking.
@@ -165,7 +165,7 @@ bool HardSpheres::__ChangeVolume()
   // Scaling new spheres.
   __ScaleSpheres(ratio);
 
-  // Checking overlap.
+  // Checking overlap. TODO: there should be possible to do this more efficiently...
   for (uint32_t i = 0; i < SpheresNumber; i++) {
     for (uint32_t j = 0; j < SpheresNumber; j++) {
       if (i==j) continue;
@@ -186,7 +186,19 @@ bool HardSpheres::__ChangeVolume()
   return true;
 }
 
-Point * HardSpheres::GenerateWithBasis(uint32_t dim, Point * basis, uint32_t sph_per_dim, double sph_size)
+void HardSpheres::__SaveSystem(uint32_t step)
+{
+  for (uint32_t k = 0; k < SpheresNumber; k++) {
+    SpheresStored[step][k].Init(Dimensions);
+    SpheresStored[step][k] = Spheres[k];
+  }
+  for (uint32_t k = 0; k < 2; k++) {
+    SystemSizeStored[step][k].Init(Dimensions);
+    SystemSizeStored[step][k] = SystemSize[k];
+  }
+}
+
+Point * HardSpheres::GenerateLatticeWithBasis(uint32_t dim, Point * basis, uint32_t sph_per_dim, double sph_size)
 {
   if (Dimensions != dim || Basis == NULL || LocCoefs == NULL) {
     if (Basis) delete[] Basis;
@@ -217,7 +229,7 @@ Point * HardSpheres::GenerateWithBasis(uint32_t dim, Point * basis, uint32_t sph
   return Spheres;
 }
 
-Point * HardSpheres::GenerateFromFile(char const * filename)
+Point * HardSpheres::GenerateLatticeFromFile(char const * filename)
 {
   Json::Value Root;
   Json::Reader reader;
@@ -264,9 +276,35 @@ Point * HardSpheres::GenerateFromFile(char const * filename)
   return Spheres;
 }
 
-void HardSpheres::UpdateParticles(double part_delta, double vol_delta, uint32_t steps, uint32_t save_step, uint32_t n_part_moves)
+void HardSpheres::InitializeFromFile(char const * filename)
 {
-  if (Spheres == NULL) return;
+  Json::Value Root;
+  Json::Reader reader;
+  std::ifstream savefile(filename, std::ifstream::in);
+  savefile >> Root;
+  savefile.close();
+
+  if (Root["FileType"] != "HardSpheresInit") {
+    std::cout << "Error: wrong file type. Nothing done.\n";
+    return;
+  }
+
+  BPSigma = Root["BPSigma"].asDouble();
+  ParticleMoves = Root["ParticleMoves"].asUInt();
+  VolumeChanges = Root["VolumeChanges"].asUInt();
+
+  StepSize = Root["StepSize"].asDouble();
+  VolumeDelta = Root["VolumeDelta"].asDouble();
+
+  TotalSteps = Root["TotalSteps"].asUInt();
+  SaveSystemInterval = Root["SaveSystemInterval"].asUInt();
+  SavedSteps = TotalSteps / SaveSystemInterval + 1;
+
+  if (VolumeChanges > 0 && BPSigma == 0) {
+    std::cout << "Warning: βPσ^3 set to zero but VolumeChanges > 0, using NVT ensemble.\n";
+    VolumeChanges = 0;
+  }
+
   if (SpheresStored) {
     for (uint32_t i = 0; i < SavedSteps; i++) {
       delete[] SpheresStored[i];
@@ -280,9 +318,6 @@ void HardSpheres::UpdateParticles(double part_delta, double vol_delta, uint32_t 
     delete[] SystemSizeStored;
   }
 
-  StepSize = part_delta;
-  VolumeDelta = vol_delta;
-  SavedSteps = steps/save_step+1;
   SpheresStored = new Point*[SavedSteps];
   for (uint32_t i = 0; i < SavedSteps; i++) {
     SpheresStored[i] = new Point[SpheresNumber];
@@ -292,54 +327,34 @@ void HardSpheres::UpdateParticles(double part_delta, double vol_delta, uint32_t 
     SystemSizeStored[i] = new Point[SpheresNumber];
   }
 
+  Initialized = true;
+}
+
+void HardSpheres::UpdateParticles()
+{
+  if (Spheres == NULL || !Initialized) return;
+
   bool allowed = true;
-  uint32_t part_hits = 0, vol_hits = 0, part_count = 0, vol_count = 0;
-  double part_rate = 0.0, vol_rate = 0.0;
-  for (uint32_t i = 0, step = 0; i < steps; i++) {
+  StepSizeAdapter part_counter(StepSize, 0.001 * SphereSize, 2.0 * SphereSize);
+  StepSizeAdapter vol_counter(VolumeDelta, 0.001 * SphereSize, 2.0 * SphereSize);
+
+  for (uint32_t i = 0, step = 0; i < TotalSteps; i++) {
     // Save spheres
-    if ((save_step > 0 ? i % save_step == 0 : false) && (step < SavedSteps) && allowed) {
-      for (uint32_t k = 0; k < SpheresNumber; k++) {
-        SpheresStored[step][k].Init(Dimensions);
-        SpheresStored[step][k] = Spheres[k];
-      }
-      for (uint32_t k = 0; k < 2; k++) {
-        SystemSizeStored[step][k].Init(Dimensions);
-        SystemSizeStored[step][k] = SystemSize[k];
-      }
+    if ((SaveSystemInterval > 0 ? i % SaveSystemInterval == 0 : false) && (step < SavedSteps) && allowed) {
+      __SaveSystem(step);
       step++;
     }
 
     // Move one particle.
-    for (uint32_t j = 0; j < n_part_moves; j++) {
+    for (uint32_t j = 0; j < ParticleMoves; j += (allowed ? 1 : 0)) {
       allowed = __MoveParticle();
-      part_count++;
-
-      if (allowed) { part_hits++; } else { j--; }
-
-      // Compute hit ratio and modify step size consequently.
-      part_rate = 1.0 * part_hits / (part_count + 1);
-      if (part_rate < 0.4) {
-        StepSize = std::fmax(StepSize * 0.9, 0.001 * SphereSize);
-      } else if (part_rate > 0.6) {
-        StepSize = std::fmin(StepSize * 1.1,   2.0 * SphereSize);
-      }
+      StepSize = part_counter.Update(allowed);
     }
 
-    allowed = false;
-
     // Change volume.
-    while (!allowed) {
+    for (uint32_t j = 0; j < VolumeChanges; j += (allowed ? 1 : 0)) {
       allowed = __ChangeVolume();
-      vol_count++;
-
-      if (allowed) { vol_hits++; }
-
-      vol_rate = 1.0 * vol_hits / (vol_count + 1);
-      if (vol_rate < 0.4) {
-        VolumeDelta = std::fmax(VolumeDelta * 0.9, 0.001 * SphereSize);
-      } else if (vol_rate > 0.6) {
-        VolumeDelta = std::fmin(VolumeDelta * 1.1, 2 * SphereSize);
-      }
+      VolumeDelta = vol_counter.Update(allowed);
     }
   }
 }
