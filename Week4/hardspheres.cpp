@@ -152,7 +152,7 @@ bool HardSpheres::__ChangeVolume()
   }
 
   // Compute acceptance.
-  double acc = std::exp(-(BPSigma*(new_volume - old_volume) - SpheresNumber*std::log(new_volume/old_volume)));
+  double acc = std::exp(-BPSigma*(new_volume - old_volume) + SpheresNumber*std::log(new_volume/old_volume));
 
   // If rejected, recover everything, otherwise proceed
   // with overlap checking.
