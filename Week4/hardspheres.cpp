@@ -12,32 +12,19 @@ HardSpheres::HardSpheres()
 HardSpheres::~HardSpheres()
 {
   if (Spheres) delete[] Spheres;
-  if (Basis) delete[] Basis;
+  if (SystemSize) delete[] SystemSize;
   if (SpheresStored) {
     for (uint32_t i = 0; i < SavedSteps; i++) {
       delete[] SpheresStored[i];
     }
     delete[] SpheresStored;
   }
-}
-
-void HardSpheres::__LocateSpheres(uint32_t d)
-{
-  if (d) {
-    for (; LocCoefs[d] < SpheresPerDim; LocCoefs[d]++) {
-      __LocateSpheres(d - 1);
+  if (SystemSizeStored) {
+    for (uint32_t i = 0; i < SavedSteps; i++) {
+      delete[] SystemSizeStored[i];
     }
-  } else {
-    for (; LocCoefs[d] < SpheresPerDim; LocCoefs[d]++) {
-      assert(SphereCursor - Spheres < SpheresNumber);
-      SphereCursor->Init(Dimensions, 0.0);
-      for (uint32_t i = 0; i < Dimensions; i++) {
-        (*SphereCursor) += Basis[i] * LocCoefs[i];
-      }
-      SphereCursor++;
-    }
+    delete[] SystemSizeStored;
   }
-  LocCoefs[d] = 0;
 }
 
 void HardSpheres::__ScaleSpheres(const Point & ratio)
@@ -59,8 +46,7 @@ bool HardSpheres::__Overlap(const Point & s1, const Point & s2)
 
 void HardSpheres::__ComputeSystemSize()
 {
-  if (Spheres == NULL) return;
-
+  assert(Spheres != NULL);
   if (SystemSize) delete[] SystemSize;
   SystemSize = new Point[2];
 
@@ -85,17 +71,6 @@ void HardSpheres::__ComputeSystemSize()
   }
 }
 
-double HardSpheres::__ComputePackingFraction()
-{
-  double vol_cube = 1.0;
-  for (uint32_t i = 0; i < Dimensions; i++) {
-    vol_cube *= SystemSize[1][i]-SystemSize[0][i];
-  }
-
-  double vol_sphere = Dimensions == 3 ? 4*pi/3*std::pow(SphereSize,3) : pi*std::pow(SphereSize,2);
-  return SpheresNumber*vol_sphere/vol_cube;
-}
-
 bool HardSpheres::__MoveParticle()
 {
   // Pick random particle.
@@ -117,7 +92,7 @@ bool HardSpheres::__MoveParticle()
     }
   }
 
-  // If not overlaping, move it.
+  // If it's not overlaping, move it.
   *s = p;
   return true;
 }
@@ -182,98 +157,17 @@ bool HardSpheres::__ChangeVolume()
     }
   }
 
-  // Everything's OK, return true.
+  // Everything's OK, update variables and return true.
+  SystemSizeHalf = (SystemSize[1] - SystemSize[0]) * 0.5;
   return true;
 }
 
 void HardSpheres::__SaveSystem(uint32_t step)
 {
-  for (uint32_t k = 0; k < SpheresNumber; k++) {
-    SpheresStored[step][k].Init(Dimensions);
-    SpheresStored[step][k] = Spheres[k];
-  }
-  for (uint32_t k = 0; k < 2; k++) {
-    SystemSizeStored[step][k].Init(Dimensions);
-    SystemSizeStored[step][k] = SystemSize[k];
-  }
-}
-
-Point * HardSpheres::GenerateLatticeWithBasis(uint32_t dim, Point * basis, uint32_t sph_per_dim, double sph_size)
-{
-  if (Dimensions != dim || Basis == NULL || LocCoefs == NULL) {
-    if (Basis) delete[] Basis;
-    if (LocCoefs) delete[] LocCoefs;
-    Basis = new Point[dim];
-    LocCoefs = new uint32_t[dim];
-    Dimensions = dim;
-  }
-
-  if (SpheresPerDim != sph_per_dim || Spheres == NULL) {
-    if (Spheres) delete[] Spheres;
-    SpheresNumber = pow(sph_per_dim,Dimensions);
-    Spheres = new Point[SpheresNumber];
-    SphereCursor = Spheres;
-    SpheresPerDim = sph_per_dim;
-    RandomIntDistribution = std::uniform_int_distribution<uint32_t>(0, SpheresNumber - 1);
-  }
-
-  SphereSize = sph_size;
-
-  for (uint32_t i = 0; i < Dimensions; i++) {
-    Basis[i].Init(Dimensions);
-    Basis[i] = basis[i];
-    LocCoefs[i] = 0;
-  }
-
-  __LocateSpheres(Dimensions - 1);
-  return Spheres;
-}
-
-Point * HardSpheres::GenerateLatticeFromFile(char const * filename)
-{
-  Json::Value Root;
-  Json::Reader reader;
-  std::ifstream savefile(filename, std::ifstream::in);
-  savefile >> Root;
-  savefile.close();
-
-  if (Root["FileType"] != "LatticeGenerator") {
-    std::cout << "Error: trying to load wrong type of file.\n";
-    return NULL;
-  }
-
-  Dimensions = Root["Dimensions"].asUInt();
-  SpheresNumber = Root["SpheresNumber"].asUInt();
-  SphereSize = Root["SphereSize"].asDouble();
-
-  RandomIntDistribution = std::uniform_int_distribution<uint32_t>(0, SpheresNumber - 1);
-
-  if (Spheres) delete[] Spheres;
-  Spheres = new Point[SpheresNumber];
-
-  if (Basis) delete[] Basis;
-  Basis = new Point[Dimensions];
-  for (uint32_t i = 0; i < Dimensions; i++) {
-    Basis[i].Init(Dimensions);
-    for (uint32_t j = 0; j < Dimensions; j++) {
-      Basis[i][j] = Root["Basis"][i][j].asDouble();
-    }
-  }
-
   for (uint32_t i = 0; i < SpheresNumber; i++) {
-    Spheres[i].Init(Dimensions, 0);
-    for (uint32_t j = 0; j < Dimensions; j++) {
-      Spheres[i] += Basis[j] * Root["Data"][i][j].asDouble();
-    }
+    if (i < 2) SystemSizeStored[step][i] = SystemSize[i];
+    SpheresStored[step][i] = Spheres[i];
   }
-
-  __ComputeSystemSize();
-
-  SystemSizeHalf.Free();
-  SystemSizeHalf.Init(Dimensions);
-  SystemSizeHalf = (SystemSize[1] - SystemSize[0]) * 0.5;
-
-  return Spheres;
 }
 
 void HardSpheres::InitializeFromFile(char const * filename)
@@ -284,10 +178,7 @@ void HardSpheres::InitializeFromFile(char const * filename)
   savefile >> Root;
   savefile.close();
 
-  if (Root["FileType"] != "HardSpheresInit") {
-    std::cout << "Error: wrong file type. Nothing done.\n";
-    return;
-  }
+  assert(Root["FileType"] == "HardSpheresInit");
 
   BPSigma = Root["BPSigma"].asDouble();
   ParticleMoves = Root["ParticleMoves"].asUInt();
@@ -298,12 +189,61 @@ void HardSpheres::InitializeFromFile(char const * filename)
 
   TotalSteps = Root["TotalSteps"].asUInt();
   SaveSystemInterval = Root["SaveSystemInterval"].asUInt();
-  SavedSteps = TotalSteps / SaveSystemInterval + 1;
+  SavedSteps = SaveSystemInterval > 0 ? TotalSteps / SaveSystemInterval + 1 : 0;
 
   if (VolumeChanges > 0 && BPSigma == 0) {
     std::cout << "Warning: βPσ^3 set to zero but VolumeChanges > 0, using NVT ensemble.\n";
     VolumeChanges = 0;
   }
+
+  if (VolumeChanges > 0 && VolumeDelta == 0) {
+    std::cout << "Warning: VolumeDelta set to zero but VolumeChanges > 0, using NVT ensemble.\n";
+    VolumeChanges = 0;
+  }
+
+  Initialized = true;
+}
+
+void HardSpheres::GenerateLatticeFromFile(char const * filename)
+{
+  Json::Value Root;
+  Json::Reader reader;
+  std::ifstream savefile(filename, std::ifstream::in);
+  savefile >> Root;
+  savefile.close();
+
+  assert(Root["FileType"] == "LatticeGenerator");
+
+  Dimensions = Root["Dimensions"].asUInt();
+  SpheresNumber = Root["SpheresNumber"].asUInt();
+  SphereSize = Root["SphereSize"].asDouble();
+
+  RandomIntDistribution = std::uniform_int_distribution<uint32_t>(0, SpheresNumber - 1);
+
+  if (Spheres) delete[] Spheres;
+  Spheres = new Point[SpheresNumber];
+
+  Point * basis = new Point[Dimensions];
+  for (uint32_t i = 0; i < Dimensions; i++) {
+    basis[i].Init(Dimensions);
+    for (uint32_t j = 0; j < Dimensions; j++) {
+      basis[i][j] = Root["Basis"][i][j].asDouble();
+    }
+  }
+
+  for (uint32_t i = 0; i < SpheresNumber; i++) {
+    Spheres[i].Init(Dimensions, 0);
+    for (uint32_t j = 0; j < Dimensions; j++) {
+      Spheres[i] += basis[j] * Root["Data"][i][j].asDouble();
+    }
+  }
+
+  delete[] basis;
+
+  __ComputeSystemSize();
+
+  SystemSizeHalf.Free(Dimensions);
+  SystemSizeHalf = (SystemSize[1] - SystemSize[0]) * 0.5;
 
   if (SpheresStored) {
     for (uint32_t i = 0; i < SavedSteps; i++) {
@@ -311,6 +251,7 @@ void HardSpheres::InitializeFromFile(char const * filename)
     }
     delete[] SpheresStored;
   }
+
   if (SystemSizeStored) {
     for (uint32_t i = 0; i < 2; i++) {
       delete[] SystemSizeStored[i];
@@ -321,26 +262,51 @@ void HardSpheres::InitializeFromFile(char const * filename)
   SpheresStored = new Point*[SavedSteps];
   for (uint32_t i = 0; i < SavedSteps; i++) {
     SpheresStored[i] = new Point[SpheresNumber];
-  }
-  SystemSizeStored = new Point*[SavedSteps];
-  for (uint32_t i = 0; i < 2; i++) {
-    SystemSizeStored[i] = new Point[SpheresNumber];
+    for (uint32_t j = 0; j < SpheresNumber; j++) {
+      SpheresStored[i][j].Init(Dimensions);
+    }
   }
 
-  Initialized = true;
+  SystemSizeStored = new Point*[SavedSteps];
+  for (uint32_t i = 0; i < SavedSteps; i++) {
+    SystemSizeStored[i] = new Point[2];
+    for (uint32_t j = 0; j < 2; j++) {
+      SystemSizeStored[i][j].Init(Dimensions);
+    }
+  }
 }
 
 void HardSpheres::UpdateParticles()
 {
-  if (Spheres == NULL || !Initialized) return;
+  assert(Spheres != NULL && Initialized);
 
   bool allowed = true;
-  StepSizeAdapter part_counter(StepSize, 0.001 * SphereSize, 2.0 * SphereSize);
-  StepSizeAdapter vol_counter(VolumeDelta, 0.001 * SphereSize, 2.0 * SphereSize);
+  StepSizeAdapter part_counter(StepSize, 1e-6 * SphereSize, 2.0 * SphereSize);
+  StepSizeAdapter vol_counter(VolumeDelta, 1e-6 * SphereSize, 2.0 * SphereSize);
+
+  Json::Value Progress;
+  Json::FastWriter writer;
+  Progress["CurrentStep"] = 0;
+  Progress["TotalSteps"] = TotalSteps;
+  Progress["PartRate"] = part_counter.rate;
+  Progress["VolRate"] = vol_counter.rate;
+  Progress["PartCount"] = part_counter.count;
+  Progress["VolCount"] = vol_counter.count;
+  Progress["PartDelta"] = part_counter.delta;
+  Progress["VolDelta"] = vol_counter.delta;
 
   for (uint32_t i = 0, step = 0; i < TotalSteps; i++) {
-    // Save spheres
+    // Save spheres.
     if ((SaveSystemInterval > 0 ? i % SaveSystemInterval == 0 : false) && (step < SavedSteps) && allowed) {
+      Progress["CurrentStep"] = i;
+      Progress["PartRate"] = part_counter.rate;
+      Progress["VolRate"] = vol_counter.rate;
+      Progress["PartCount"] = part_counter.count;
+      Progress["VolCount"] = vol_counter.count;
+      Progress["PartDelta"] = part_counter.delta;
+      Progress["VolDelta"] = vol_counter.delta;
+
+      std::cout << writer.write(Progress);
       __SaveSystem(step);
       step++;
     }
@@ -350,12 +316,18 @@ void HardSpheres::UpdateParticles()
       allowed = __MoveParticle();
       StepSize = part_counter.Update(allowed);
     }
+    allowed = true;
 
     // Change volume.
-    for (uint32_t j = 0; j < VolumeChanges; j += (allowed ? 1 : 0)) {
+    for (uint32_t j = 0, r = 0; j < VolumeChanges && r < 10*VolumeChanges; j += (allowed ? 1 : 0), r++) {
       allowed = __ChangeVolume();
+      // Do not modify volume delta change yet.
       VolumeDelta = vol_counter.Update(allowed);
     }
+    allowed = true;
+  }
+  if (allowed && SavedSteps > 0) {
+    __SaveSystem(SavedSteps-1);
   }
 }
 
@@ -367,16 +339,12 @@ void HardSpheres::LoadSpheres(char const * filename)
   savefile >> Root;
   savefile.close();
 
-  if (Root["FileType"] != "InitialCondition") {
-    std::cout << "Error: trying to load wrong type of file.\n";
-    return;
-  }
-
   Dimensions = Root["Dimensions"].asUInt();
   SpheresNumber = Root["SpheresNumber"].asUInt();
   SphereSize = Root["SphereSize"].asDouble();
 
   RandomIntDistribution = std::uniform_int_distribution<uint32_t>(0, SpheresNumber - 1);
+  uint32_t starting_step = Root["SavedSteps"].asUInt() - 1;
 
   if (Spheres) delete[] Spheres;
   Spheres = new Point[SpheresNumber];
@@ -384,14 +352,13 @@ void HardSpheres::LoadSpheres(char const * filename)
   for (uint32_t i = 0; i < SpheresNumber; i++) {
     Spheres[i].Init(Dimensions);
     for (uint32_t j = 0; j < Dimensions; j++) {
-      Spheres[i][j] = Root["Data"][j][i].asDouble();
+      Spheres[i][j] = Root["Data"][starting_step][i][j].asDouble();
     }
   }
 
   __ComputeSystemSize();
 
-  SystemSizeHalf.Free();
-  SystemSizeHalf.Init(Dimensions);
+  SystemSizeHalf.Free(Dimensions);
   SystemSizeHalf = (SystemSize[1] - SystemSize[0]) * 0.5;
 }
 
@@ -401,68 +368,22 @@ void HardSpheres::SaveSpheres(char const * filename)
   Root["Dimensions"] = Dimensions;
   Root["SpheresNumber"] = SpheresNumber;
   Root["SphereSize"] = SphereSize;
-  Root["PackFraction"] = __ComputePackingFraction();
-  Root["FileType"] = "InitialCondition";
-
-  for (uint32_t i = 0; i < Dimensions; i++) {
-    Root["Data"][i] = Json::Value(Json::arrayValue);
-  }
-
-  Root["SystemSize"][0] = Json::Value(Json::arrayValue);
-  Root["SystemSize"][1] = Json::Value(Json::arrayValue);
-  for (uint32_t i = 0; i < Dimensions; i++) {
-    Root["SystemSize"][0].append(SystemSize[0][i]);
-    Root["SystemSize"][1].append(SystemSize[1][i]);
-  }
-
-  for (uint32_t i = 0; i < SpheresNumber; i++) {
-    for (uint32_t j = 0; j < Dimensions; j++) {
-      Root["Data"][j].append(Spheres[i][j]);
-    }
-  }
-
-  Json::FastWriter writer;
-  std::ofstream savefile(filename);
-  savefile << writer.write(Root);
-  savefile.close();
-}
-
-void HardSpheres::SaveStoredSpheres(char const * filename)
-{
-  Json::Value Root;
-  Root["Dimensions"] = Dimensions;
-  Root["SpheresNumber"] = SpheresNumber;
-  Root["SphereSize"] = SphereSize;
   Root["SavedSteps"] = SavedSteps;
-  Root["PackFraction"] = __ComputePackingFraction();
-  Root["FileType"] = "Evolution";
 
-  for (uint32_t i = 0; i < 2; i++) {
+  for (uint32_t i = 0; i < SavedSteps; i++) {
     Root["SystemSize"][i] = Json::Value(Json::arrayValue);
-    for (uint32_t j = 0; j < SavedSteps; j++) {
-      Root["SystemSize"][i].append(Json::arrayValue);
-    }
-  }
-
-  for (uint32_t k = 0; k < SavedSteps; k++) {
-    for (uint32_t i = 0; i < 2; i++) {
-      for (uint32_t j = 0; j < Dimensions; j++) {
-        Root["SystemSize"][j][k].append(SpheresStored[k][i][j]);
-      }
-    }
-  }
-
-  for (uint32_t i = 0; i < Dimensions; i++) {
     Root["Data"][i] = Json::Value(Json::arrayValue);
-    for (uint32_t j = 0; j < SavedSteps; j++) {
-      Root["Data"][i].append(Json::Value(Json::arrayValue));
+    for (uint32_t j = 0; j < SpheresNumber; j++) {
+      if (j < 2) Root["SystemSize"][i].append(Json::arrayValue);
+      Root["Data"][i].append(Json::arrayValue);
     }
   }
 
-  for (uint32_t k = 0; k < SavedSteps; k++) {
-    for (uint32_t i = 0; i < SpheresNumber; i++) {
-      for (uint32_t j = 0; j < Dimensions; j++) {
-        Root["Data"][j][k].append(SpheresStored[k][i][j]);
+  for (uint32_t i = 0; i < SavedSteps; i++) {
+    for (uint32_t j = 0; j < SpheresNumber; j++) {
+      for (uint32_t k = 0; k < Dimensions; k++) {
+        if (j < 2) Root["SystemSize"][i][j].append(SystemSizeStored[i][j][k]);
+        Root["Data"][i][j].append(SpheresStored[i][j][k]);
       }
     }
   }

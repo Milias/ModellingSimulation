@@ -119,13 +119,3 @@ def GenerateFCC(N, sph_size, scale, filename):
   f.write(json.dumps(data))
   f.close()
   return "Saved to %s successfully." %  filename
-
-"""
-x = linspace(2.0,4.0,100)
-
-GenerateHexagonal([10, 6], 1.0, 2.0, "data/lattice-hexa.json")
-for i in range(100): GenerateHexagonal([10, 6], 1.0, x[i], "data/lattice-hexa-%d.json" % (i+1,))
-GenerateSC([12]*3, 1.0, 2.1 , "data/lattice-sc.json")
-GenerateFCC([6]*3, 1.0, 3.5 , "data/lattice-fcc.json")
-for i in range(100): GenerateHexagonal([6]*3, 1.0, x[i], "data/lattice-fcc-%d.json" % (i+1,))
-"""

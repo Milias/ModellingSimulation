@@ -68,6 +68,12 @@ struct Point
     N = 0;
   }
 
+  void Free(uint32_t dim) {
+    if (Values) delete[] Values;
+    N = dim;
+    Values = new double[N];
+  }
+
   Point & Init(uint32_t dim, double a) {
     N = dim;
     Values = new double[N];

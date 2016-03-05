@@ -2,21 +2,16 @@
 
 int main(int argc, char ** argv)
 {
-  if (argc == 1) {
-    printf("Usage:\n");
-  } else if(argc > 1) {
-    if (strcmp(argv[1],"-gen") == 0 && argc == 4) {
-      printf("Generating lattice from file %s.\n", argv[2]);
+  if(argc > 1) {
+    if (strcmp(argv[1],"-gevolve") == 0 && argc == 5) {
       HardSpheres hs;
-      hs.GenerateFromFile(argv[2]);
-      hs.SaveSpheres(argv[3]);
-
-    } else if (strcmp(argv[1],"-evolve") == 0 && argc == 8) {
-      printf("Evolving %s, Steps: %d.\n", argv[5], std::atoi(argv[3]));
-      HardSpheres hs;
-      hs.LoadSpheres(argv[5]);
-      hs.UpdateParticles(std::atof(argv[2]), std::atoll(argv[3]), std::atoll(argv[4]), std::atoll(argv[5]));
-      hs.SaveStoredSpheres(argv[6]);
+      std::cout << argv[2] << std::endl;
+      std::cout << argv[3] << std::endl;
+      std::cout << argv[4] << std::endl;
+      hs.InitializeFromFile(argv[2]);
+      hs.GenerateLatticeFromFile(argv[3]);
+      hs.UpdateParticles();
+      hs.SaveSpheres(argv[4]);
     } else {
       printf("Wrong argument combination.\n");
     }
