@@ -1,12 +1,22 @@
 #!/bin/python2
 # -*- coding: utf8 -*-
 from numpy import *
+from scipy.special import *
 import matplotlib.pyplot as plt
 import sys
 import json
 
 if sys.version_info < (3, 0):
   import visual as vs
+
+def SphereVolume(dim, R):
+  return pi**(0.5*dim)/gamma(0.5*dim+1)*R**dim
+
+def CubeVolume(xmin, xmax):
+  v = 1.0
+  for i in range(len(xmin)):
+    v *= (xmax-xmin)[i]
+  return v
 
 def PlotSphereEvolution2(filename):
   try:
@@ -121,17 +131,18 @@ def PlotRSquared(filename):
 
   plt.plot(x,rsq,'r-')
 
-def PlotMelting(f):
-  data = [json.loads(open(i, "r").read()) for i in f]
+def PlotPackingFractionVsStep(f):
+  data = json.loads(open(f, "r").read())
 
-  x = []
-  rsq = []
-  for i in data:
-    y = array(i["Data"])
-    x.append(i["PackFraction"])
-    rsq.append(average(sum((y[:,-1,:]-y[:,0,:])*(y[:,-1,:]-y[:,0,:]),axis=0)))
+  y = []
+  spheres_volume = data["SpheresNumber"]*SphereVolume(len(data["SystemSize"][0][0]), data["SphereSize"])
+  for i in range(0, data["TotalSteps"], data["SaveSystemInterval"]):
+    xmin = array(data["SystemSize"][i][0])
+    xmax = array(data["SystemSize"][i][1])
+    V = CubeVolume(xmin, xmax)
+    y.append(V/spheres_volume)
 
-  plt.plot(x,rsq,'r-')
+  plt.plot(x,y,'r-')
 
 def ParseInput(argv):
   if len(argv) > 1:

@@ -80,13 +80,13 @@ def GenerateFCC(N, sph_size, scale, filename):
     data["Data"].append([i,i+1,-i])
     data["Data"].append([i,i,-i+1])
     data["SpheresNumber"] += 4
-    for j in range(N[1]):
+    for j in range(1,N[1]):
       data["Data"].append([i+j, i-j, j-i])
       data["Data"].append([i+j+1,i-j,j-i])
       data["Data"].append([i+j,i-j+1,j-i])
       data["Data"].append([i+j,i-j,j-i+1])
       data["SpheresNumber"] += 4
-      for k in range(N[2]):
+      for k in range(1,N[2]):
         data["Data"].append([i+j-k, i-j+k, j-i+k])
         data["Data"].append([i+j-k+1,i-j+k,j-i+k])
         data["Data"].append([i+j-k,i-j+k+1,j-i+k])

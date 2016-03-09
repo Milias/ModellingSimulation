@@ -8,6 +8,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+from graphs import *
+
 class RepresentationWidget(QWidget):
   def __init__(self, name, parent):
     super().__init__(parent.TabBox)
@@ -35,6 +37,8 @@ class RepresentationWidget(QWidget):
     bload.clicked.connect(self.On3DRepr)
     self.Grid.addWidget(bload,1,3,1,1)
 
+    self.Grid.addWidget(QLabel("<b>2D representation</b>"), 1, 0, 1, 4, Qt.AlignHCenter)
+
     dummy = QWidget()
     dummy.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     self.Grid.addWidget(dummy,100,0)
@@ -42,3 +46,9 @@ class RepresentationWidget(QWidget):
   def On3DRepr(self):
     ret = subprocess.Popen(["./python/graphs.py","-plot3",self.DataWidgets["3dFileName"].text()],stdout=subprocess.PIPE)
     self.Parent.statusBar().showMessage("Running representation...", 1500)
+
+  def OnPackFracStep(self):
+    try:
+      PlotPackingFractionVsStep(self.DataWidgets["3dFileName"].text())
+    except Exception as e:
+      self.Parent.statusBar().showMessage(str(e), 5000)

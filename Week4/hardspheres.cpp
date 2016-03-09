@@ -25,6 +25,8 @@ HardSpheres::~HardSpheres()
     }
     delete[] SystemSizeStored;
   }
+  if (StepSizeStored) { delete[] StepSizeStored; }
+  if (VolumeDeltaStored) { delete[] VolumeDeltaStored; }
 }
 
 void HardSpheres::__ScaleSpheres(const Point & ratio)
@@ -110,11 +112,10 @@ bool HardSpheres::__ChangeVolume()
     SystemSize[i] = old_box[i];
   }
 
+  double delta = RandomDouble() * VolumeDelta;
   for (uint32_t i = 0; i < Dimensions; i++) {
-    SystemSize[1][i] += RandomDouble() * VolumeDelta;
-    if (SystemSize[1][i] < SystemSize[0][i]) {
-      // If it's been rejected, delete the proposed one and
-      // recover the old one.
+    SystemSize[1][i] += delta;
+    if (SystemSize[1][i] - SystemSize[0][i] < SphereSize) {
       delete[] SystemSize;
       SystemSize = old_box;
       return false;
@@ -164,10 +165,24 @@ bool HardSpheres::__ChangeVolume()
 
 void HardSpheres::__SaveSystem(uint32_t step)
 {
+  StepSizeStored[step] = StepSize;
+  VolumeDeltaStored[step] = VolumeDelta;
   for (uint32_t i = 0; i < SpheresNumber; i++) {
     if (i < 2) SystemSizeStored[step][i] = SystemSize[i];
     SpheresStored[step][i] = Spheres[i];
   }
+}
+
+void HardSpheres::__UpdateJsonOutput(Json::Value & root, uint32_t step, StepSizeAdapter & part, StepSizeAdapter & vol)
+{
+  root["CurrentStep"] = step;
+  root["TotalSteps"] = TotalSteps;
+  root["PartRate"] = part.rate;
+  root["VolRate"] = vol.rate;
+  root["PartCount"] = part.count;
+  root["VolCount"] = vol.count;
+  root["PartDelta"] = part.delta;
+  root["VolDelta"] = vol.delta;
 }
 
 void HardSpheres::InitializeFromFile(char const * filename)
@@ -259,6 +274,9 @@ void HardSpheres::GenerateLatticeFromFile(char const * filename)
     delete[] SystemSizeStored;
   }
 
+  if (StepSizeStored) { delete[] StepSizeStored; }
+  if (VolumeDeltaStored) { delete[] VolumeDeltaStored; }
+
   SpheresStored = new Point*[SavedSteps];
   for (uint32_t i = 0; i < SavedSteps; i++) {
     SpheresStored[i] = new Point[SpheresNumber];
@@ -274,6 +292,9 @@ void HardSpheres::GenerateLatticeFromFile(char const * filename)
       SystemSizeStored[i][j].Init(Dimensions);
     }
   }
+
+  StepSizeStored = new double[SavedSteps];
+  VolumeDeltaStored = new double[SavedSteps];
 }
 
 void HardSpheres::UpdateParticles()
@@ -282,30 +303,16 @@ void HardSpheres::UpdateParticles()
 
   bool allowed = true;
   StepSizeAdapter part_counter(StepSize, 1e-6 * SphereSize, 2.0 * SphereSize);
-  StepSizeAdapter vol_counter(VolumeDelta, 1e-6 * SphereSize, 2.0 * SphereSize);
+  StepSizeAdapter vol_counter(VolumeDelta, 1e-6 * SphereSize, 10.0 * SphereSize);
 
   Json::Value Progress;
   Json::FastWriter writer;
-  Progress["CurrentStep"] = 0;
-  Progress["TotalSteps"] = TotalSteps;
-  Progress["PartRate"] = part_counter.rate;
-  Progress["VolRate"] = vol_counter.rate;
-  Progress["PartCount"] = part_counter.count;
-  Progress["VolCount"] = vol_counter.count;
-  Progress["PartDelta"] = part_counter.delta;
-  Progress["VolDelta"] = vol_counter.delta;
+  __UpdateJsonOutput(Progress, 0, part_counter, vol_counter);
 
   for (uint32_t i = 0, step = 0; i < TotalSteps; i++) {
     // Save spheres.
     if ((SaveSystemInterval > 0 ? i % SaveSystemInterval == 0 : false) && (step < SavedSteps) && allowed) {
-      Progress["CurrentStep"] = i;
-      Progress["PartRate"] = part_counter.rate;
-      Progress["VolRate"] = vol_counter.rate;
-      Progress["PartCount"] = part_counter.count;
-      Progress["VolCount"] = vol_counter.count;
-      Progress["PartDelta"] = part_counter.delta;
-      Progress["VolDelta"] = vol_counter.delta;
-
+      __UpdateJsonOutput(Progress, i, part_counter, vol_counter);
       std::cout << writer.write(Progress);
       __SaveSystem(step);
       step++;
@@ -322,13 +329,15 @@ void HardSpheres::UpdateParticles()
     for (uint32_t j = 0, r = 0; j < VolumeChanges && r < 10*VolumeChanges; j += (allowed ? 1 : 0), r++) {
       allowed = __ChangeVolume();
       // Do not modify volume delta change yet.
-      VolumeDelta = vol_counter.Update(allowed);
+      //VolumeDelta = vol_counter.Update(allowed);
     }
     allowed = true;
   }
   if (allowed && SavedSteps > 0) {
     __SaveSystem(SavedSteps-1);
   }
+  __UpdateJsonOutput(Progress, TotalSteps, part_counter, vol_counter);
+  std::cout << writer.write(Progress);
 }
 
 void HardSpheres::LoadSpheres(char const * filename)
@@ -338,6 +347,8 @@ void HardSpheres::LoadSpheres(char const * filename)
   std::ifstream savefile(filename, std::ifstream::in);
   savefile >> Root;
   savefile.close();
+
+  //assert(Root["FileType"] == "LatticeGenerator");
 
   Dimensions = Root["Dimensions"].asUInt();
   SpheresNumber = Root["SpheresNumber"].asUInt();
@@ -349,6 +360,20 @@ void HardSpheres::LoadSpheres(char const * filename)
   if (Spheres) delete[] Spheres;
   Spheres = new Point[SpheresNumber];
 
+  if (SystemSize) delete[] SystemSize;
+  SystemSize = new Point[2];
+
+  SystemSize[0].Init(Dimensions);
+  SystemSize[1].Init(Dimensions);
+
+  for (uint32_t i = 0; i < Dimensions; i++) {
+    SystemSize[0][i] = Root["SystemSize"][starting_step][0][i].asDouble();
+    SystemSize[1][i] = Root["SystemSize"][starting_step][1][i].asDouble();
+  }
+
+  SystemSizeHalf.Free(Dimensions);
+  SystemSizeHalf = (SystemSize[1] - SystemSize[0]) * 0.5;
+
   for (uint32_t i = 0; i < SpheresNumber; i++) {
     Spheres[i].Init(Dimensions);
     for (uint32_t j = 0; j < Dimensions; j++) {
@@ -356,10 +381,41 @@ void HardSpheres::LoadSpheres(char const * filename)
     }
   }
 
-  __ComputeSystemSize();
+  if (SpheresStored) {
+    for (uint32_t i = 0; i < SavedSteps; i++) {
+      delete[] SpheresStored[i];
+    }
+    delete[] SpheresStored;
+  }
 
-  SystemSizeHalf.Free(Dimensions);
-  SystemSizeHalf = (SystemSize[1] - SystemSize[0]) * 0.5;
+  if (SystemSizeStored) {
+    for (uint32_t i = 0; i < 2; i++) {
+      delete[] SystemSizeStored[i];
+    }
+    delete[] SystemSizeStored;
+  }
+
+  if (StepSizeStored) { delete[] StepSizeStored; }
+  if (VolumeDeltaStored) { delete[] VolumeDeltaStored; }
+
+  SpheresStored = new Point*[SavedSteps];
+  for (uint32_t i = 0; i < SavedSteps; i++) {
+    SpheresStored[i] = new Point[SpheresNumber];
+    for (uint32_t j = 0; j < SpheresNumber; j++) {
+      SpheresStored[i][j].Init(Dimensions);
+    }
+  }
+
+  SystemSizeStored = new Point*[SavedSteps];
+  for (uint32_t i = 0; i < SavedSteps; i++) {
+    SystemSizeStored[i] = new Point[2];
+    for (uint32_t j = 0; j < 2; j++) {
+      SystemSizeStored[i][j].Init(Dimensions);
+    }
+  }
+
+  StepSizeStored = new double[SavedSteps];
+  VolumeDeltaStored = new double[SavedSteps];
 }
 
 void HardSpheres::SaveSpheres(char const * filename)
@@ -369,10 +425,19 @@ void HardSpheres::SaveSpheres(char const * filename)
   Root["SpheresNumber"] = SpheresNumber;
   Root["SphereSize"] = SphereSize;
   Root["SavedSteps"] = SavedSteps;
+  Root["FileType"] = "SystemEvolution";
+  Root["BPSigma"] = BPSigma;
+  Root["ParticleMoves"] = ParticleMoves;
+  Root["VolumeChanges"] = VolumeChanges;
+
+  Root["TotalSteps"] = TotalSteps;
+  Root["SaveSystemInterval"] = SaveSystemInterval;
 
   for (uint32_t i = 0; i < SavedSteps; i++) {
     Root["SystemSize"][i] = Json::Value(Json::arrayValue);
     Root["Data"][i] = Json::Value(Json::arrayValue);
+    Root["StepSize"][i] = StepSizeStored[i];
+    Root["VolumeDelta"][i] = VolumeDeltaStored[i];
     for (uint32_t j = 0; j < SpheresNumber; j++) {
       if (j < 2) Root["SystemSize"][i].append(Json::arrayValue);
       Root["Data"][i].append(Json::arrayValue);

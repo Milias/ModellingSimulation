@@ -19,9 +19,10 @@ class GenerationJobThread(QThread):
     self.Widget = widget
     self.job_finished[int].connect(completed)
     self.progress_update[str].connect(widget.ProcessUpdate)
+    self.started.connect(widget.ProcessStarted)
 
   def run(self):
-    args = [self.Data["BinaryFile"], "-gevolve", self.Data["ConfigFile"], self.Data["LatticeFile"], self.Data["OutputFile"]]
+    args = [self.Data["BinaryFile"], self.Data["InputMode"], self.Data["ConfigFile"], self.Data["LatticeFile"], self.Data["OutputFile"]]
     with subprocess.Popen(args,stdout=subprocess.PIPE, bufsize=1, universal_newlines=True) as p:
       for line in p.stdout:
         self.progress_update.emit(line+"\n")
@@ -40,8 +41,11 @@ class GenerationJobWidget(QWidget):
     label = QLabel("Job %d" % self.Data["JobIndex"])
     grid.addWidget(label)
 
-    self.ProgressPercent = QLabel("0%")
+    self.ProgressPercent = QLabel("Waiting")
     grid.addWidget(self.ProgressPercent)
+
+  def ProcessStarted(self):
+    self.ProgressPercent.setText("Starting")
 
   def ProcessUpdate(self, progress):
     try:
@@ -49,7 +53,10 @@ class GenerationJobWidget(QWidget):
     except:
       return
 
-    self.ProgressPercent.setText("%3.0f%%" % (100.0*json_map["CurrentStep"]/json_map["TotalSteps"]))
+    if json_map["CurrentStep"] != json_map["TotalSteps"]:
+      self.ProgressPercent.setText("%3.0f%%" % (100.0*json_map["CurrentStep"]/json_map["TotalSteps"]))
+    else:
+      self.ProgressPercent.setText("Saving")
 
 class JobsWidget(QWidget):
   def __init__(self, name, parent):
@@ -96,8 +103,6 @@ class JobsWidget(QWidget):
     bclear.clicked.connect(self.ClearJobs)
     self.Grid.addWidget(bclear, 2,2,1,2)
 
-    for i in range(8): self.RegisterJob({"BinaryFile":"./bin/week4", "ConfigFile":"data/config.json", "LatticeFile":"data/lattice-sc.json", "OutputFile":"data/evolution-sc.json"})
-
   def RegisterJob(self, data):
     data.update({"JobIndex":self.JobCount})
     job_widget = GenerationJobWidget(data)
@@ -111,11 +116,13 @@ class JobsWidget(QWidget):
     for i in self.PendingJobs: i.start()
 
   def ClearJobs(self):
-    for i in self.CompletedJobs:
-      self.JobQueues[1].removeWidget(i.Widget)
+    indices = [self.JobQueues[1].indexOf(i.Widget) for i in self.CompletedJobs]
+    for i in reversed(indices):
+      item = self.JobQueues[1].takeAt(i)
+      if item != None:
+        item.widget().deleteLater()
 
     del self.CompletedJobs[:]
-
 
   def CompletedJob(self, index):
     job = None
@@ -131,3 +138,4 @@ class JobsWidget(QWidget):
 
     self.JobQueues[1].insertWidget(len(self.CompletedJobs), job.Widget)
     self.CompletedJobs.append(job)
+    job.Widget.ProgressPercent.setText("Done")

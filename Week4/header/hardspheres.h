@@ -44,7 +44,9 @@ private:
     SphereSize = 0.0,
     StepSize = 0.0,
     VolumeDelta = 0.0,
-    BPSigma = 0.0;
+    BPSigma = 0.0,
+     * StepSizeStored = NULL,
+     * VolumeDeltaStored = NULL;
 
   Point
      * Spheres = NULL,
@@ -60,6 +62,7 @@ private:
   bool __ChangeVolume();
 
   void __SaveSystem(uint32_t step);
+  void __UpdateJsonOutput(Json::Value & root, uint32_t step, StepSizeAdapter & part, StepSizeAdapter & vol);
 
 public:
   HardSpheres();
