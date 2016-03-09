@@ -35,20 +35,57 @@ class RepresentationWidget(QWidget):
 
     bload = QPushButton("Load")
     bload.clicked.connect(self.On3DRepr)
-    self.Grid.addWidget(bload,1,3,1,1)
+    self.Grid.addWidget(bload, 1, 3)
 
-    self.Grid.addWidget(QLabel("<b>2D representation</b>"), 1, 0, 1, 4, Qt.AlignHCenter)
+    self.Grid.addWidget(QLabel("<b>2D representation</b>"), 2, 0, 1, 4, Qt.AlignHCenter)
+
+    self.SelectedFiles = []
+    self.FileDialog = QFileDialog()
+    self.Grid.addWidget(QLabel("Packing fraction vs step"), 3, 0)
+    bsearch = QPushButton("...")
+    bsearch.clicked.connect(self.OnSearchFiles)
+    self.Grid.addWidget(bsearch, 3, 1)
+
+    bplot = QPushButton("Plot")
+    bplot.clicked.connect(self.OnPackFracStep)
+    self.Grid.addWidget(bplot, 3, 2)
+
+    self.Grid.addWidget(QLabel("Packing fraction vs P"), 4, 0)
+    bsearch = QPushButton("...")
+    bsearch.clicked.connect(self.OnSearchFiles)
+    self.Grid.addWidget(bsearch, 4, 1)
+
+    bplot = QPushButton("Plot")
+    bplot.clicked.connect(self.OnPackFracP)
+    self.Grid.addWidget(bplot, 4, 2)
 
     dummy = QWidget()
     dummy.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     self.Grid.addWidget(dummy,100,0)
 
+  def OnSearchFiles(self):
+    self.SelectedFiles[:] = self.FileDialog.getOpenFileNames(self, "Select configuration file(s)", "data", "JSON files (*.json)")[0]
+
   def On3DRepr(self):
     ret = subprocess.Popen(["./python/graphs.py","-plot3",self.DataWidgets["3dFileName"].text()],stdout=subprocess.PIPE)
-    self.Parent.statusBar().showMessage("Running representation...", 1500)
+    self.Parent.statusBar().showMessage("Starting representation...", 1500)
 
   def OnPackFracStep(self):
-    try:
-      PlotPackingFractionVsStep(self.DataWidgets["3dFileName"].text())
-    except Exception as e:
-      self.Parent.statusBar().showMessage(str(e), 5000)
+    for i in self.SelectedFiles:
+      try:
+        PlotPackingFractionVsStep(i)
+      except Exception as e:
+        self.Parent.statusBar().showMessage(str(e), 5000)
+
+    plt.legend(loc=0,numpoints=1)
+    plt.show()
+
+  def OnPackFracP(self):
+    for i in self.SelectedFiles:
+      try:
+        PlotPackingFractionVsP(i)
+      except Exception as e:
+        self.Parent.statusBar().showMessage(str(e), 5000)
+
+    #plt.legend(loc=0)
+    plt.show()

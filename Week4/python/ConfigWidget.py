@@ -1,6 +1,5 @@
 # -*- coding: utf8 -*-
 import json
-from numpy import *
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -89,15 +88,18 @@ class ConfigWidget(QWidget):
 
     filename = self.DataWidgets["ConfigSavedFile"].text()
     npoints = int(self.DataWidgets["BPSigma-points"].text())
-    P = linspace(float(self.DataWidgets["BPSigma"].text()), float(self.DataWidgets["BPSigma-to"].text()), npoints)
+    P0 = float(self.DataWidgets["BPSigma"].text())
+    Pf = float(self.DataWidgets["BPSigma-to"].text())
 
     if npoints > 1:
+      P = [(Pf-P0)/(npoints-1)*i+P0 for i in range(npoints)]
       try:
         names = [filename % i for i in range(npoints)]
       except Exception as e:
         print(e)
         return
     else:
+      P = [P0]
       names = [filename]
 
     for i in self.InputNames:

@@ -326,7 +326,7 @@ void HardSpheres::UpdateParticles()
     allowed = true;
 
     // Change volume.
-    for (uint32_t j = 0, r = 0; j < VolumeChanges && r < 10*VolumeChanges; j += (allowed ? 1 : 0), r++) {
+    for (uint32_t j = 0, r = 0; j < VolumeChanges && r < 1; j += (allowed ? 1 : 0), r++) {
       allowed = __ChangeVolume();
       // Do not modify volume delta change yet.
       //VolumeDelta = vol_counter.Update(allowed);

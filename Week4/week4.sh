@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python python/config.py
+python3 python/config.py
