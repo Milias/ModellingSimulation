@@ -1,7 +1,11 @@
 #!/bin/python2
 # -*- coding: utf8 -*-
-from numpy import *
-import matplotlib.pyplot as plt
+try:
+  from numpy import *
+  import matplotlib.pyplot as plt
+except Exception as e:
+    print(e)
+
 import sys
 import json
 
@@ -155,7 +159,7 @@ def PlotPackingFractionVsP(f, step0 = 0):
 
   avg_eta /= (data["SavedSteps"]-step0)
   plt.plot([avg_eta],[data["BPSigma"]],'ro')
-  plt.plot([avg_eta],[TheoryPvsEta(avg_eta)],'b.')
+  #plt.plot([avg_eta],[TheoryPvsEta(avg_eta)],'b.')
 
 def ParseInput(argv):
   if len(argv) > 1:
@@ -167,3 +171,5 @@ def ParseInput(argv):
       print("Wrong argument.")
 
 ParseInput(sys.argv)
+
+PlotSphereEvolution3("../data/evol/fcc-0.json")

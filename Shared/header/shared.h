@@ -257,7 +257,7 @@ struct Point
       if (Values[i] > p[i]) {
         Values[i] = - p[i] + std::fmod(std::fabs(p[i] - Values[i]),t);
       } else if (Values[i] < -p[i]) {
-        Values[i] = p[i] - std::fmod(std::fabs(p[i] + Values[i]),t);
+        Values[i] = p[i] - std::fmod(std::fabs(- p[i] - Values[i]),t);
       }
     }
     return *this;

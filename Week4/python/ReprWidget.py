@@ -92,5 +92,6 @@ class RepresentationWidget(QWidget):
       except Exception as e:
         self.Parent.statusBar().showMessage(str(e), 5000)
 
-    #plt.legend(loc=0)
+    x = linspace(0,0.7,100)
+    plt.plot(x,TheoryPvsEta(x),'b-')
     plt.show()

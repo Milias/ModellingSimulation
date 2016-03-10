@@ -123,14 +123,12 @@ bool HardSpheres::__ChangeVolume()
     ratio[i] = (SystemSize[1][i]-SystemSize[0][i])/(old_box[1][i]-old_box[0][i]);
 
     // Compute volumes.
-    old_volume *= old_box[1][i]-old_box[0][i];
-    new_volume *= SystemSize[1][i]-SystemSize[0][i];
+    old_volume *= (old_box[1][i]-old_box[0][i]);
+    new_volume *= (SystemSize[1][i]-SystemSize[0][i]);
   }
 
   // Compute acceptance.
-  double acc = std::exp(-BPSigma*(new_volume - old_volume) + SpheresNumber*std::log(new_volume/old_volume));
-
-  printf("%f, %f, %f: %f\n", new_volume, old_volume, SpheresNumber*4*pi/3*std::pow(SphereSize,3)/old_volume, acc);
+  double acc = std::exp(-BPSigma*(new_volume - old_volume)/std::pow(2*SphereSize,3) + SpheresNumber*std::log(new_volume/old_volume));
 
   // If rejected, recover everything, otherwise proceed
   // with overlap checking.
@@ -259,8 +257,6 @@ void HardSpheres::GenerateLatticeFromFile(char const * filename)
 
   __ComputeSystemSize();
 
-  printf("%f, %f, %f\n", SystemSize[1][0]-SystemSize[0][0], SystemSize[1][1]-SystemSize[0][1], SystemSize[1][2]-SystemSize[0][2]);
-
   SystemSizeHalf.Free(Dimensions);
   SystemSizeHalf = (SystemSize[1] - SystemSize[0]) * 0.5;
 
@@ -312,7 +308,7 @@ void HardSpheres::UpdateParticles()
   Json::Value Progress;
   Json::FastWriter writer;
   __UpdateJsonOutput(Progress, 0, part_counter, vol_counter);
-  //std::cout << writer.write(Progress);
+  std::cout << writer.write(Progress);
 
   uint32_t step = 0;
   for (uint32_t i = 0; i < TotalSteps; i++) {
@@ -324,11 +320,11 @@ void HardSpheres::UpdateParticles()
 
     if (i % 100 == 0) {
       __UpdateJsonOutput(Progress, i, part_counter, vol_counter);
-      //std::cout << writer.write(Progress);
+      std::cout << writer.write(Progress);
     }
 
     // Move one particle.
-    for (uint32_t j = 0; j < ParticleMoves; j+=(allowed ? 1 : 0)) {
+    for (uint32_t j = 0; j < ParticleMoves; j++) {
       allowed = __MoveParticle();
       StepSize = part_counter.Update(allowed);
     }
@@ -345,7 +341,7 @@ void HardSpheres::UpdateParticles()
     __SaveSystem(SavedSteps-1);
     SavedSteps = step+1;
   }
-  //__UpdateJsonOutput(Progress, TotalSteps, part_counter, vol_counter);
+  __UpdateJsonOutput(Progress, TotalSteps, part_counter, vol_counter);
   std::cout << writer.write(Progress);
 }
 
