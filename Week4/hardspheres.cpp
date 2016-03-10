@@ -115,7 +115,7 @@ bool HardSpheres::__ChangeVolume()
   double delta = RandomDouble() * VolumeDelta;
   for (uint32_t i = 0; i < Dimensions; i++) {
     SystemSize[1][i] += delta;
-    if (SystemSize[1][i] - SystemSize[0][i] < SphereSize) {
+    if (SystemSize[1][i] < SystemSize[0][i]) {
       delete[] SystemSize;
       SystemSize = old_box;
       return false;
@@ -158,6 +158,7 @@ bool HardSpheres::__ChangeVolume()
     }
   }
 
+  delete[] old_box;
   // Everything's OK, update variables and return true.
   SystemSizeHalf = (SystemSize[1] - SystemSize[0]) * 0.5;
   return true;
@@ -308,33 +309,38 @@ void HardSpheres::UpdateParticles()
   Json::Value Progress;
   Json::FastWriter writer;
   __UpdateJsonOutput(Progress, 0, part_counter, vol_counter);
+  std::cout << writer.write(Progress);
 
-  for (uint32_t i = 0, step = 0; i < TotalSteps; i++) {
+  uint32_t step = 0;
+  for (uint32_t i = 0; i < TotalSteps; i++) {
     // Save spheres.
-    if ((SaveSystemInterval > 0 ? i % SaveSystemInterval == 0 : false) && (step < SavedSteps) && allowed) {
-      __UpdateJsonOutput(Progress, i, part_counter, vol_counter);
-      std::cout << writer.write(Progress);
+    if ((SaveSystemInterval > 0 ? i % SaveSystemInterval == 0 : false)) {
       __SaveSystem(step);
       step++;
     }
 
+    if (i % 100 == 0) {
+      __UpdateJsonOutput(Progress, i, part_counter, vol_counter);
+      std::cout << writer.write(Progress);
+    }
+
     // Move one particle.
-    for (uint32_t j = 0; j < ParticleMoves; j += (allowed ? 1 : 0)) {
+    for (uint32_t j = 0; j < ParticleMoves; j+=(allowed ? 1 : 0)) {
       allowed = __MoveParticle();
       StepSize = part_counter.Update(allowed);
     }
-    allowed = true;
 
     // Change volume.
-    for (uint32_t j = 0, r = 0; j < VolumeChanges && r < 1; j += (allowed ? 1 : 0), r++) {
-      allowed = __ChangeVolume();
+    for (uint32_t j = 0; j < VolumeChanges; j++) {
+      //allowed =
+      __ChangeVolume();
       // Do not modify volume delta change yet.
       //VolumeDelta = vol_counter.Update(allowed);
     }
-    allowed = true;
   }
-  if (allowed && SavedSteps > 0) {
+  if (SavedSteps > 0) {
     __SaveSystem(SavedSteps-1);
+    SavedSteps = step+1;
   }
   __UpdateJsonOutput(Progress, TotalSteps, part_counter, vol_counter);
   std::cout << writer.write(Progress);

@@ -1,26 +1,34 @@
 #!/bin/python2
 # -*- coding: utf8 -*-
 from numpy import *
-from scipy.special import *
 import matplotlib.pyplot as plt
 import sys
 import json
 
 if sys.version_info < (3, 0):
   import visual as vs
+else:
+  print("Warning: Python-Visual not found.")
 
-def SphereVolume(dim, R):
-  return pi**(0.5*dim)/gamma(0.5*dim+1)*R**dim
+try:
+  from scipy.special import *
+  def SphereVolume(dim, R):
+    return pi**(0.5*dim)/gamma(0.5*dim+1)*R**dim
+except Exception as e:
+  print("Warning: scipy not found, program only valid for 2/3d spheres.")
+  def SphereVolume(dim, R):
+    if dim == 3:
+      return 3.0*pi/4.0*R**3
+    elif dim == 2:
+      return pi*R**2
+    else:
+      return 0.0
 
 def TheoryPvsEta(eta):
   return (1+eta+eta**2-eta**3)/(1-eta)**3
 
 def CubeVolume(xmin, xmax):
-  v = 1.0
-  dx = xmax-xmin
-  for i in dx:
-    v *= i
-  return v
+  return prod(xmax-xmin)
 
 def PlotSphereEvolution2(filename):
   try:
@@ -120,21 +128,6 @@ def PlotSphereEvolution3(filename):
     else:
       nt += 1
 
-def PlotRSquared(filename):
-  try:
-    f = open(filename,'r')
-    data = json.loads(f.read())
-    f.close()
-  except Exception as e:
-    return str(e)
-
-  x = arange(data["SavedSteps"])
-  y = array(data["Data"])
-
-  rsq = array([average(sum((y[:,i,:]-y[:,0,:])*(y[:,i,:]-y[:,0,:]),axis=0)) for i in range(data["SavedSteps"])])
-
-  plt.plot(x,rsq,'r-')
-
 def PlotPackingFractionVsStep(f):
   data = json.loads(open(f, "r").read())
 
@@ -147,20 +140,20 @@ def PlotPackingFractionVsStep(f):
     V = CubeVolume(xmin, xmax)
     y.append(spheres_volume/V)
 
-  plt.plot(x,y,'.',label="βPσ^3 = %f" % data["BPSigma"])
+  plt.plot(x,y,'-',label="βPσ^3 = %f" % data["BPSigma"])
 
-def PlotPackingFractionVsP(f):
+def PlotPackingFractionVsP(f, step0 = 0):
   data = json.loads(open(f, "r").read())
 
   spheres_volume = data["SpheresNumber"]*SphereVolume(len(data["SystemSize"][0][0]), data["SphereSize"])
   avg_eta = 0.0
-  for i in range(data["SavedSteps"]):
+  for i in range(step0, data["SavedSteps"]):
     xmin = array(data["SystemSize"][i][0])
     xmax = array(data["SystemSize"][i][1])
     V = CubeVolume(xmin, xmax)
     avg_eta += spheres_volume/V
 
-  avg_eta /= data["SavedSteps"]
+  avg_eta /= (data["SavedSteps"]-step0)
   plt.plot([avg_eta],[data["BPSigma"]],'ro')
   plt.plot([avg_eta],[TheoryPvsEta(avg_eta)],'b.')
 

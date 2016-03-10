@@ -50,14 +50,19 @@ class RepresentationWidget(QWidget):
     bplot.clicked.connect(self.OnPackFracStep)
     self.Grid.addWidget(bplot, 3, 2)
 
-    self.Grid.addWidget(QLabel("Packing fraction vs P"), 4, 0)
+    self.Grid.addWidget(QLabel("Packing fraction vs P <i>(step zero)</i>"), 4, 0)
+    line_edit = QLineEdit()
+    line_edit.setValidator(QIntValidator())
+    line_edit.setText("0")
+    self.DataWidgets["Step0"] = line_edit
+    self.Grid.addWidget(line_edit, 4, 1)
     bsearch = QPushButton("...")
     bsearch.clicked.connect(self.OnSearchFiles)
-    self.Grid.addWidget(bsearch, 4, 1)
+    self.Grid.addWidget(bsearch, 4, 2)
 
     bplot = QPushButton("Plot")
     bplot.clicked.connect(self.OnPackFracP)
-    self.Grid.addWidget(bplot, 4, 2)
+    self.Grid.addWidget(bplot, 4, 3)
 
     dummy = QWidget()
     dummy.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -77,13 +82,13 @@ class RepresentationWidget(QWidget):
       except Exception as e:
         self.Parent.statusBar().showMessage(str(e), 5000)
 
-    plt.legend(loc=0,numpoints=1)
+    #plt.legend(loc=0,numpoints=1)
     plt.show()
 
   def OnPackFracP(self):
     for i in self.SelectedFiles:
       try:
-        PlotPackingFractionVsP(i)
+        PlotPackingFractionVsP(i, int(self.DataWidgets["Step0"].text()))
       except Exception as e:
         self.Parent.statusBar().showMessage(str(e), 5000)
 
