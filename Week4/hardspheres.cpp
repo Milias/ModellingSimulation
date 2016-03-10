@@ -130,6 +130,8 @@ bool HardSpheres::__ChangeVolume()
   // Compute acceptance.
   double acc = std::exp(-BPSigma*(new_volume - old_volume) + SpheresNumber*std::log(new_volume/old_volume));
 
+  printf("%f, %f, %f: %f\n", new_volume, old_volume, SpheresNumber*4*pi/3*std::pow(SphereSize,3)/old_volume, acc);
+
   // If rejected, recover everything, otherwise proceed
   // with overlap checking.
   if (RandomProb() > acc) {
@@ -143,8 +145,7 @@ bool HardSpheres::__ChangeVolume()
 
   // Checking overlap. TODO: there should be possible to do this more efficiently...
   for (uint32_t i = 0; i < SpheresNumber; i++) {
-    for (uint32_t j = 0; j < SpheresNumber; j++) {
-      if (i==j) continue;
+    for (uint32_t j = i + 1; j < SpheresNumber; j++) {
       if (__Overlap(Spheres[i],Spheres[j])) {
         // Reject everything.
         for (uint32_t k = 0; k < Dimensions; k++) {
@@ -258,6 +259,8 @@ void HardSpheres::GenerateLatticeFromFile(char const * filename)
 
   __ComputeSystemSize();
 
+  printf("%f, %f, %f\n", SystemSize[1][0]-SystemSize[0][0], SystemSize[1][1]-SystemSize[0][1], SystemSize[1][2]-SystemSize[0][2]);
+
   SystemSizeHalf.Free(Dimensions);
   SystemSizeHalf = (SystemSize[1] - SystemSize[0]) * 0.5;
 
@@ -309,7 +312,7 @@ void HardSpheres::UpdateParticles()
   Json::Value Progress;
   Json::FastWriter writer;
   __UpdateJsonOutput(Progress, 0, part_counter, vol_counter);
-  std::cout << writer.write(Progress);
+  //std::cout << writer.write(Progress);
 
   uint32_t step = 0;
   for (uint32_t i = 0; i < TotalSteps; i++) {
@@ -321,7 +324,7 @@ void HardSpheres::UpdateParticles()
 
     if (i % 100 == 0) {
       __UpdateJsonOutput(Progress, i, part_counter, vol_counter);
-      std::cout << writer.write(Progress);
+      //std::cout << writer.write(Progress);
     }
 
     // Move one particle.
@@ -342,7 +345,7 @@ void HardSpheres::UpdateParticles()
     __SaveSystem(SavedSteps-1);
     SavedSteps = step+1;
   }
-  __UpdateJsonOutput(Progress, TotalSteps, part_counter, vol_counter);
+  //__UpdateJsonOutput(Progress, TotalSteps, part_counter, vol_counter);
   std::cout << writer.write(Progress);
 }
 

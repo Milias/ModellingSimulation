@@ -11,6 +11,7 @@
 #include <random>
 #include <iostream>
 #include <fstream>
+#include <cstdio>
 
 // uncomment to disable assert()
 // #define NDEBUG
