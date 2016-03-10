@@ -103,8 +103,40 @@ emphstyle={\color{blue}\ttfamily}
 
 \section{Pressure as a function of the packing fraction $\eta$}
 
-\subsection{Crystal phase}
+\subsection{Solid initial configuration}
 
-\subsection{Liquid phase}
+Firstly, we simulate a system of 108 particles starting from a FCC lattice of 3 by 3 by 3 unit cells, with a spacing of 1.5 units and spheres of radius 0.5.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.7\textwidth]{../graphs/solid.pdf}
+    \caption{Plot of the state as a function of the packing fraction.}
+  \end{center}
+\end{figure}
+
+Where the blue line has been computed by the Carnahan and Starling equation of state:
+
+$$ \frac{P_{cs}}{\rho k_B T} = \frac{1 + \eta + \eta^2 - \eta^3}{(1-\eta)^3} $$
+
+This equation is only valid for the liquid phase, and as we could expect, for high enough pressures there's a phase transition from solid to liquid. In our simulation we find this transition to happen from $\eta \sim 0.56$ to $\eta \sim 0.59$, at the state $\beta P \sigma^3 \sim 10$.
+
+After this discontinuity, the simulation points follow more or less CS equation of state, but shifted a certain amount. It is possible to improve this behavior by increasing the number of steps in the simulation, as it may have not reached equilibrium yet.
+
+Of course, it cannot go higher than the maximum packing fraction of the FCC lattice (around 0.7), so it is expected to find some saturation effects close to this limit.
+
+\subsection{Liquid initial configuration}
+
+As before, we will simulate a system of the same characteristics, but starting now from a liquid phase of $\eta \sim 0.1$.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.7\textwidth]{../graphs/liquid.pdf}
+    \caption{Plot of the state as a function of the packing fraction.}
+  \end{center}
+\end{figure}
+
+In this case we find a much better agreement between theory and simulation for the liquid phase, probably related to the initial condition. We also find a slightly different value for the pressure, $\beta P \sigma^3 \sim 15$, what could be expected because of some hysteresis in the system. However, the gap in packing fraction during the transition has similar value than before.
+
+Although, in this case it's more difficult to determine the behavior as a crystal, because the number of steps required to find equilibrium is too large.
 
 \end{document}

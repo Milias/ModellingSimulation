@@ -83,15 +83,23 @@ class RepresentationWidget(QWidget):
         self.Parent.statusBar().showMessage(str(e), 5000)
 
     #plt.legend(loc=0,numpoints=1)
+    plt.xlabel(r"N / Step")
+    plt.ylabel(r"$\eta$ / Packing fraction")
     plt.show()
 
   def OnPackFracP(self):
     for i in self.SelectedFiles:
       try:
+        data = json.loads(open(i,'r').read())
         PlotPackingFractionVsP(i, int(self.DataWidgets["Step0"].text()))
       except Exception as e:
         self.Parent.statusBar().showMessage(str(e), 5000)
 
     x = linspace(0,0.7,100)
-    plt.plot(x,TheoryPvsEta(x),'b-')
+    plt.title(r"Packing fraction against $\beta P \sigma^3$")
+    plt.xlabel(r"$\eta$ / Packing fraction")
+    plt.ylabel(r"$\beta P \sigma^3$ / State")
+    plt.plot(x,TheoryPvsEta(x),'b-',label="Theory")
+    plt.plot([],[],'ro',label="Simulation")
+    plt.legend(loc=0,numpoints=1)
     plt.show()
