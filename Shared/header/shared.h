@@ -25,6 +25,14 @@ typedef std::chrono::time_point<DefaultClock> t_point;
 
 const double pi = 3.14159265359;
 
+inline uint64_t factorial(uint64_t n) {
+  if (n==0) {
+    return 1;
+  } else {
+    return n*factorial(n-1);
+  }
+}
+
 /*
   This structure defines an N-dimensional
   point in space, alongside a variety of
