@@ -56,8 +56,8 @@ void Correlation::__CountDistances(uint32_t step)
 {
   for (uint32_t i = 0; i < DistancesNumber; i++) {
     for (uint32_t j = 0; j < BinsNumber; j++) {
-      if (BinDistances[j] > Distances[step * DistancesNumber + i]) {
-        DistancesCount[step * BinsNumber + j]++;
+      if (BinDistances[j] >= Distances[step * DistancesNumber + i]) {
+        DistancesCount[step * BinsNumber + j] += 2;
         break;
       }
     }
@@ -68,7 +68,7 @@ void Correlation::__NormalizeCounts(uint32_t step)
 {
   for (uint32_t i = 0; i < BinsNumber; i++) {
     NormalizedDensity[step * BinsNumber + i] =
-       DistancesCount[step * BinsNumber + i] / SpheresNumber / __Nideal(step, i);
+       DistancesCount[step * BinsNumber + i] / __Nideal(step, i) / SpheresNumber;
   }
 }
 

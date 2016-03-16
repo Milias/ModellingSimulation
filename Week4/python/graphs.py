@@ -170,4 +170,5 @@ def ParseInput(argv):
     else:
       print("Wrong argument.")
 
+PlotSphereEvolution3("../data/evolution-fcc.json")
 ParseInput(sys.argv)
