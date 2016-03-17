@@ -56,13 +56,8 @@ void Correlation::__CountDistances(uint32_t step)
 {
   for (uint32_t i = 0; i < DistancesNumber; i++) {
     for (uint32_t j = 0; j < BinsNumber; j++) {
-<<<<<<< HEAD
       if (BinDistances[j] >= Distances[step * DistancesNumber + i]) {
         DistancesCount[step * BinsNumber + j] += 2;
-=======
-      if (BinDistances[j] > Distances[step * DistancesNumber + i]) {
-        DistancesCount[step * BinsNumber + j]++;
->>>>>>> 8ebc1ce7c21bb664fa948fa5f207337baaed4f64
         break;
       }
     }
@@ -73,11 +68,7 @@ void Correlation::__NormalizeCounts(uint32_t step)
 {
   for (uint32_t i = 0; i < BinsNumber; i++) {
     NormalizedDensity[step * BinsNumber + i] =
-<<<<<<< HEAD
        DistancesCount[step * BinsNumber + i] / __Nideal(step, i) / SpheresNumber;
-=======
-       DistancesCount[step * BinsNumber + i] / SpheresNumber / __Nideal(step, i);
->>>>>>> 8ebc1ce7c21bb664fa948fa5f207337baaed4f64
   }
 }
 
@@ -182,10 +173,7 @@ void Correlation::SaveHistogram(char const * filename)
     Root["BinDistances"][j] = BinDistances[j];
     for (uint32_t i = 0; i < SavedSteps; i++) {
       Root["NormalizedDensity"][i][j] = NormalizedDensity[i * BinsNumber + j];
-<<<<<<< HEAD
       if (j == 0) Root["BoxParticleDensity"][i] = BoxParticleDensity[i];
-=======
->>>>>>> 8ebc1ce7c21bb664fa948fa5f207337baaed4f64
     }
   }
 
