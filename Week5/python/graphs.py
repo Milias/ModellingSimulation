@@ -12,7 +12,6 @@ def PlotHistogram(filename, step):
   y = array(data["NormalizedDensity"])
   x = array(data["BinDistances"])
   y_avg = average(y[step:], axis=0)
-  y_avg[x>1] = y_avg[x>1.0] + 0.15
   rho = average(array(data["BoxParticleDensity"]))
   plt.axis([0, data["BinDistances"][-1] + 0.5*data["BinWidth"], 0, max(y_avg)])
   plt.xlabel("r / Sphere diameter units")
