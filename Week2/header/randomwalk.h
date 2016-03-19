@@ -27,8 +27,8 @@ private:
   uint32_t Dimensions = 0, StepNumber = 0, WalksNumber = 0;
 
   //Point is defined in "shared.h"
-  Point * StepLocations = NULL;
-  double * RSquared = NULL;
+  Point * StepLocations= nullptr;
+  double * RSquared= nullptr;
 
 public:
   /*

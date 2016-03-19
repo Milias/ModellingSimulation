@@ -1,6 +1,6 @@
 #include "randomwalk.h"
 
-RandomWalk::RandomWalk(uint32_t dim) : Dimensions(dim), StepLocations(NULL), RSquared(NULL)
+RandomWalk::RandomWalk(uint32_t dim) : Dimensions(dim), StepLocations(nullptr), RSquared(nullptr)
 {
   Generator.seed(DefaultClock::now().time_since_epoch().count());
   RandomRealDistribution = std::uniform_real_distribution<double>(-1.0,1.0);
@@ -36,7 +36,7 @@ Point & RandomWalk::RandomUnitaryVector(Point & p)
 
 Point * RandomWalk::ComputeRandomWalk(uint32_t steps, double size)
 {
-  if (StepLocations == NULL || StepNumber != steps) {
+  if (StepLocations == nullptr || StepNumber != steps) {
     delete[] StepLocations;
     StepLocations = new Point[steps];
   }
@@ -65,7 +65,7 @@ Point * RandomWalk::ComputeRandomWalk(uint32_t steps, double size)
 
 double * RandomWalk::ComputeRSquared(uint32_t steps, uint32_t nwalks, double size)
 {
-  if (RSquared == NULL || StepNumber != steps) {
+  if (RSquared == nullptr || StepNumber != steps) {
     delete[] RSquared;
     RSquared = new double[steps];
   }

@@ -26,7 +26,7 @@ template <uint32_t N, typename T> struct GenericVector
     }
   }
 
-  ~GenericVector<N, T>() { if (Values) delete[] Values; }
+  ~GenericVector<N, T>() { delete[] Values; }
 
   T & operator[](uint32_t i) const { return Values[i]; }
 

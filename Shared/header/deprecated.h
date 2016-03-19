@@ -6,9 +6,9 @@
 struct Point
 {
   uint32_t N = 0;
-  double * Values = NULL;
+  double * Values = nullptr;
 
-  Point() : N(0), Values(NULL) {}
+  Point() : N(0), Values(nullptr) {}
 
   Point(uint32_t dim) : N(dim) {
     Values = new double[N];
@@ -64,7 +64,7 @@ struct Point
   }
 
   Point & operator=(const Point & p) {
-    assert(N > 0 && Values != NULL && p.N > 0 && p.Values != NULL);
+    assert(N > 0 && Values != nullptr && p.N > 0 && p.Values != nullptr);
     if (p.N != N) {
       N = p.N;
       delete[] Values;
@@ -77,7 +77,7 @@ struct Point
   }
 
   Point & operator=(double a) {
-    assert(N > 0 && Values != NULL);
+    assert(N > 0 && Values != nullptr);
     for (uint32_t i = 0; i < N; i++) {
       Values[i] = a;
     }
@@ -85,7 +85,7 @@ struct Point
   }
 
   Point & operator=(double * p) {
-    assert(N > 0 && Values != NULL && p != NULL);
+    assert(N > 0 && Values != nullptr && p != nullptr);
     for (uint32_t i = 0; i < N; i++) {
       Values[i] = p[i];
     }

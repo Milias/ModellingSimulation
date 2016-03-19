@@ -27,15 +27,15 @@ private:
     StepSize = 0.0,
     VolumeDelta = 0.0,
     BPSigma = 0.0,
-     * StepSizeStored = NULL,
-     * VolumeDeltaStored = NULL;
+     * StepSizeStored= nullptr,
+     * VolumeDeltaStored= nullptr;
 
   Point
-     * Spheres = NULL,
-     * SystemSize = NULL,
+     * Spheres= nullptr,
+     * SystemSize= nullptr,
     SystemSizeHalf,
-     * * SpheresStored = NULL,
-     * * SystemSizeStored = NULL;
+     * * SpheresStored= nullptr,
+     * * SystemSizeStored= nullptr;
 
   void __ScaleSpheres(const Point & ratio);
   bool __Overlap(const Point & s1, const Point & s2);

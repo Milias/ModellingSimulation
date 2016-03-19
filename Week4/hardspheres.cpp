@@ -48,7 +48,7 @@ bool HardSpheres::__Overlap(const Point & s1, const Point & s2)
 
 void HardSpheres::__ComputeSystemSize()
 {
-  assert(Spheres != NULL);
+  assert(Spheres != nullptr);
   if (SystemSize) delete[] SystemSize;
   SystemSize = new Point[2];
 
@@ -299,7 +299,7 @@ void HardSpheres::GenerateLatticeFromFile(char const * filename)
 
 void HardSpheres::UpdateParticles()
 {
-  assert(Spheres != NULL && Initialized);
+  assert(Spheres != nullptr && Initialized);
 
   bool allowed = true;
   StepSizeAdapter part_counter(StepSize, 1e-6 * SphereSize, 2.0 * SphereSize);

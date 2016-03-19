@@ -167,7 +167,7 @@ int main(int argc, char* argv[]){
     energy *= 0.5;
     virial *= 0.5;
 
-    size_t seed = time(NULL);
+    size_t seed = time(nullptr);
     dsfmt_seed(seed);
 
     double volume = 1.0;

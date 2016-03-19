@@ -1,23 +1,9 @@
 #pragma once
 #include "shared.h"
 #include "vector.hpp"
+#include "part.hpp"
 
-template <uint32_t D> struct Particle
-{
-  double R = 0.0;
-  Vector<D> X;
-
-  Particle() {}
-  Particle(const Particle & p) : R(p.R), X(p.X) {}
-  Particle(const Particle * p) : R(p->R), X(p->X) {}
-
-  Particle & operator=(const Particle & p) {
-    R = p.R;
-    X = p.X;
-  }
-};
-
-template <uint32_t D> class MonteCarloSimulator
+template <uint32_t D, class Particle> class MonteCarloSimulatorNPT
 {
 protected:
   uint32_t
@@ -26,51 +12,57 @@ protected:
     VolumeChanges = 0,
     TotalSteps = 0,
     SaveSystemInterval = 0,
-    SavedSteps = 0;
+    SavedSteps = 0,
+    DistancesNumber = 0;
 
   double
+    ParticleRadius = 0.0,
     StepSize = 0.0,
     VolumeDelta = 0.0,
     BPSigma = 0.0,
-    * StoredStepSize = NULL,
-    * StoredVolumeDelta = NULL;
+    * StoredStepSize = nullptr,
+    * StoredVolumeDelta = nullptr,
+    * Distances = nullptr;
 
-  Particle<D>
-    * Particles = NULL,
-    * StoredParticles = NULL;
+  Particle
+    * Particles = nullptr,
+    ** StoredParticles = nullptr;
 
   Vector<D>
-     * SystemSize = NULL,
+    * SystemSize = nullptr,
     HalfSystemSize,
-     * * StoredSystemSize = NULL;
+    ** StoredSystemSize = nullptr;
 
   RandomGenerator Random;
 
-  void __ScaleSpheres(const Vector<D> & ratio);
-  bool __Overlap(const Particle<D> & p1, const Particle<D> & p2);
+  void __ScaleParticles(const Vector<D> & ratio);
+  bool __Overlap(const Particle & p1, const Particle & p2, double dist);
+  double __ComputeDistance2(const Vector<D> & p1, const Vector<D> & p2);
+  double __ComputeDistance(const Vector<D> & p1, const Vector<D> & p2);
   void __ComputeSystemSize();
-
-  bool __TestMovement(const Particle<D> & p);
-  bool __MoveParticle();
-  bool __ChangeVolume();
-
   void __SaveSystem(uint32_t step);
-  void __UpdateJsonOutput(Json::Value & root, uint32_t step, StepSizeAdapter & part, StepSizeAdapter & vol);
+
+  virtual bool __MoveParticle();
+  virtual bool __ChangeVolume();
+  virtual inline void __Measure() {}
+
+  virtual void __UpdateJsonOutput(Json::Value & root, uint32_t step, StepSizeAdapter & part, StepSizeAdapter & vol);
 
 public:
-  MonteCarloSimulator();
-  ~MonteCarloSimulator();
+  MonteCarloSimulatorNPT();
+  ~MonteCarloSimulatorNPT();
 
-  void InitializeFromFile(char const * filename);
+  virtual void InitializeFromFile(char const * filename);
   void UpdateParticles();
 
-  void LoadParticles(char const * filename);
-  void SaveParticles(char const * filename);
+  virtual void LoadParticles(char const * filename);
+  virtual void PostLoadParticles(Json::Value & root) {}
+  virtual void SaveParticles(char const * filename);
 };
 
-template <uint32_t D> MonteCarloSimulator<D>::MonteCarloSimulator() {}
+template <uint32_t D, class Particle> MonteCarloSimulatorNPT<D, Particle>::MonteCarloSimulatorNPT() {}
 
-template <uint32_t D> MonteCarloSimulator<D>::~MonteCarloSimulator()
+template <uint32_t D, class Particle> MonteCarloSimulatorNPT<D, Particle>::~MonteCarloSimulatorNPT()
 {
   if (Particles) delete[] Particles;
   if (SystemSize) delete[] SystemSize;
@@ -83,6 +75,7 @@ template <uint32_t D> MonteCarloSimulator<D>::~MonteCarloSimulator()
     }
     delete[] StoredParticles;
   }
+
   if (StoredSystemSize) {
     for (uint32_t i = 0; i < SavedSteps; i++) {
       delete[] StoredSystemSize[i];
@@ -91,15 +84,34 @@ template <uint32_t D> MonteCarloSimulator<D>::~MonteCarloSimulator()
   }
 }
 
-template <uint32_t D> bool MonteCarloSimulator<D>::__Overlap(const Particle<D> & p1, const Particle<D> & p2)
+template <uint32_t D, class Particle> void MonteCarloSimulatorNPT<D, Particle>::__ScaleParticles(const Vector<D> & ratio)
 {
-  Vector<D> p(p1.X);
-  p -= p2.X;
-  p %= HalfSystemSize;
-  return p * p < 4.0 * std::pow(p1.R + p2.R, 2);
+  for (uint32_t i = 0; i < ParticlesNumber; i++) {
+    for (uint32_t j = 0; j < D; j++) {
+      Particles[i].X[j] = (Particles[i].X[j] - SystemSize[0][j])*ratio[j] + SystemSize[0][j];
+    }
+  }
 }
 
-template <uint32_t D> void MonteCarloSimulator<D>::__ComputeSystemSize()
+template <uint32_t D, class Particle> bool MonteCarloSimulatorNPT<D, Particle>::__Overlap(const Particle & p1, const Particle & p2, double dist)
+{
+  return __ComputeDistance2(p1.X, p2.X) < dist * dist;
+}
+
+template <uint32_t D, class Particle> double MonteCarloSimulatorNPT<D, Particle>::__ComputeDistance2(const Vector<D> & p1, const Vector<D> & p2)
+{
+  Vector<D> p(p1);
+  p -= p2;
+  p %= HalfSystemSize;
+  return p * p;
+}
+
+template <uint32_t D, class Particle> double MonteCarloSimulatorNPT<D, Particle>::__ComputeDistance(const Vector<D> & p1, const Vector<D> & p2)
+{
+  return std::sqrt(__ComputeDistance2(p1,p2));
+}
+
+template <uint32_t D, class Particle> void MonteCarloSimulatorNPT<D, Particle>::__ComputeSystemSize()
 {
   if (SystemSize) delete[] SystemSize;
   SystemSize = new Point[2];
@@ -125,41 +137,32 @@ template <uint32_t D> void MonteCarloSimulator<D>::__ComputeSystemSize()
   }
 }
 
-template <uint32_t D> bool MonteCarloSimulator<D>::__TestMovement(const Particle<D> & p)
+template <uint32_t D, class Particle> bool MonteCarloSimulatorNPT<D, Particle>::__MoveParticle()
 {
+  // Pick random particle and copy it.
+  Particle * old_pos = Particles + Random.RandomInt();
+  Particle new_pos(old_pos);
+
+  // Move it.
+  for (uint32_t k = 0; k < D; k++) {
+    new_pos.X[k] += Random.RandomDouble() * StepSize;
+  }
+  new_pos.X.Wrap(SystemSize[0], SystemSize[1]);
+
   // Check overlap. TODO: quadtree / octree ?
   for (uint32_t k = 0; k < ParticlesNumber; k++) {
-    if (k == s - Particles) { continue; }
-    if (__Overlap(p, Particles[k])) {
+    if (k == old_pos - Particles) { continue; }
+    if (__Overlap(new_pos, Particles[k], 2.0 * ParticleRadius)) {
       return false;
     }
   }
 
-  return true;
-}
-
-template <uint32_t D> bool MonteCarloSimulator<D>::__MoveParticle()
-{
-  // Pick random particle.
-  Particle<D> * s = Particles + Random.RandomInt();
-  Particle<D> p(s);
-
-  // Move it.
-  for (uint32_t k = 0; k < D; k++) {
-    p.X[k] += Random.RandomDouble() * StepSize;
-  }
-  p.X.Wrap(SystemSize[0], SystemSize[1]);
-
-  if (!__TestMovement(const Particle<D> & p) {
-    return false;
-  }
-
   // If it's not overlaping, move it.
-  *s = p;
+  *old_pos = new_pos;
   return true;
 }
 
-template <uint32_t D> bool MonteCarloSimulator<D>::__ChangeVolume()
+template <uint32_t D, class Particle> bool MonteCarloSimulatorNPT<D, Particle>::__ChangeVolume()
 {
   Vector<D> ratio(0.0);
   Vector<D> * old_box = SystemSize;
@@ -198,14 +201,14 @@ template <uint32_t D> bool MonteCarloSimulator<D>::__ChangeVolume()
   }
 
   // Scaling new spheres.
-  __ScaleSpheres(ratio);
+  __ScaleParticles(ratio);
 
   // Checking overlap. TODO: there should be possible to do this more efficiently...
   for (uint32_t i = 0; i < ParticlesNumber; i++) {
     for (uint32_t j = i + 1; j < ParticlesNumber; j++) {
-      if (__Overlap(Particles[i].X,Particles[j].X,Particles[i].R)) {
+      if (__Overlap(Particles[i], Particles[j], 2.0 * ParticleRadius)) {
         // Reject everything.
-        __ScaleSpheres(1.0/ratio);
+        __ScaleParticles(1.0/ratio);
         delete[] SystemSize;
         SystemSize = old_box;
         return false;
@@ -215,11 +218,12 @@ template <uint32_t D> bool MonteCarloSimulator<D>::__ChangeVolume()
 
   delete[] old_box;
   // Everything's OK, update variables and return true.
-  HalfSystemSize = 0.5 * (SystemSize[1] - SystemSize[0]);
+  HalfSystemSize = SystemSize[1] - SystemSize[0];
+  HalfSystemSize *= 0.5;
   return true;
 }
 
-template <uint32_t D> void MonteCarloSimulator<D>::__SaveSystem(uint32_t step)
+template <uint32_t D, class Particle> void MonteCarloSimulatorNPT<D, Particle>::__SaveSystem(uint32_t step)
 {
   StoredStepSize[step] = StepSize;
   StoredVolumeDelta[step] = VolumeDelta;
@@ -229,7 +233,7 @@ template <uint32_t D> void MonteCarloSimulator<D>::__SaveSystem(uint32_t step)
   }
 }
 
-template <uint32_t D> void MonteCarloSimulator<D>::__UpdateJsonOutput(Json::Value & root, uint32_t step, StepSizeAdapter & part, StepSizeAdapter & vol)
+template <uint32_t D, class Particle> void MonteCarloSimulatorNPT<D, Particle>::__UpdateJsonOutput(Json::Value & root, uint32_t step, StepSizeAdapter & part, StepSizeAdapter & vol)
 {
   root["CurrentStep"] = step;
   root["TotalSteps"] = TotalSteps;
@@ -240,7 +244,7 @@ template <uint32_t D> void MonteCarloSimulator<D>::__UpdateJsonOutput(Json::Valu
   root["PartDelta"] = part.delta;
 }
 
-template <uint32_t D> void MonteCarloSimulator<D>::InitializeFromFile(char const * filename)
+template <uint32_t D, class Particle> void MonteCarloSimulatorNPT<D, Particle>::InitializeFromFile(char const * filename)
 {
   Json::Value Root;
   Json::Reader reader;
@@ -272,7 +276,7 @@ template <uint32_t D> void MonteCarloSimulator<D>::InitializeFromFile(char const
   }
 }
 
-template <uint32_t D> void MonteCarloSimulator<D>::LoadParticles(char const * filename)
+template <uint32_t D, class Particle> void MonteCarloSimulatorNPT<D, Particle>::LoadParticles(char const * filename)
 {
   Json::Value Root;
   Json::Reader reader;
@@ -280,15 +284,18 @@ template <uint32_t D> void MonteCarloSimulator<D>::LoadParticles(char const * fi
   savefile >> Root;
   savefile.close();
 
-  assert(Root["D"].asUInt() == D);
+  assert(Root["Dimensions"].asUInt() == D);
 
   ParticlesNumber = Root["ParticlesNumber"].asUInt();
+  ParticleRadius = Root["ParticleRadius"].asDouble();
+
+  if (ParticleMoves == 0) ParticleMoves = ParticlesNumber;
 
   Random.SetRange(0, ParticlesNumber - 1);
   uint32_t starting_step = Root["SavedSteps"].asUInt() - 1;
 
   if (Particles) delete[] Particles;
-  Particles = new Vector<D>[ParticlesNumber];
+  Particles = new Particle[ParticlesNumber];
 
   if (SystemSize) delete[] SystemSize;
   SystemSize = new Vector<D>[2];
@@ -298,10 +305,10 @@ template <uint32_t D> void MonteCarloSimulator<D>::LoadParticles(char const * fi
     SystemSize[1][i] = Root["SystemSize"][starting_step][1][i].asDouble();
   }
 
-  HalfSystemSize = 0.5 * (SystemSize[1] - SystemSize[0]);
+  HalfSystemSize = SystemSize[1] - SystemSize[0];
+  HalfSystemSize *= 0.5;
 
   for (uint32_t i = 0; i < ParticlesNumber; i++) {
-    Particles[i].R = Root["ParticlesRadius"][i].asDouble();
     for (uint32_t j = 0; j < D; j++) {
       Particles[i].X[j] = Root["Particles"][starting_step][i][j].asDouble();
     }
@@ -320,9 +327,9 @@ template <uint32_t D> void MonteCarloSimulator<D>::LoadParticles(char const * fi
   if (StoredStepSize) { delete[] StoredStepSize; }
   if (StoredVolumeDelta) { delete[] StoredVolumeDelta; }
 
-  StoredParticles = new Particle<D>*[SavedSteps];
+  StoredParticles = new Particle*[SavedSteps];
   for (uint32_t i = 0; i < SavedSteps; i++) {
-    StoredParticles[i] = new Particle<D>[ParticlesNumber];
+    StoredParticles[i] = new Particle[ParticlesNumber];
   }
 
   StoredSystemSize = new Vector<D>*[SavedSteps];
@@ -332,19 +339,21 @@ template <uint32_t D> void MonteCarloSimulator<D>::LoadParticles(char const * fi
 
   StoredStepSize = new double[SavedSteps];
   StoredVolumeDelta = new double[SavedSteps];
+
+  PostLoadParticles(Root);
 }
 
-template <uint32_t D> void MonteCarloSimulator<D>::UpdateParticles()
+template <uint32_t D, class Particle> void MonteCarloSimulatorNPT<D, Particle>::UpdateParticles()
 {
-  StepSizeAdapter part_counter(StepSize, 1e-6 * Particles->R, 2.0 * Particles->R);
-  StepSizeAdapter vol_counter(VolumeDelta, 1e-6 * Particles->R, 10.0 * Particles->R);
+  StepSizeAdapter part_counter(StepSize, 1e-6 * ParticleRadius, 2.0 * ParticleRadius);
+  StepSizeAdapter vol_counter(VolumeDelta, 0.0, 0.0);
 
   Json::Value Progress;
   Json::FastWriter writer;
   __UpdateJsonOutput(Progress, 0, part_counter, vol_counter);
   std::cout << writer.write(Progress);
 
-  uint32_t step = 0;
+  uint32_t step = 0, print_steps = std::min(uint32_t(100),TotalSteps/100+1);
   for (uint32_t i = 0; i < TotalSteps; i++) {
     // Save spheres.
     if (SaveSystemInterval > 0 && i % SaveSystemInterval == 0) {
@@ -352,21 +361,24 @@ template <uint32_t D> void MonteCarloSimulator<D>::UpdateParticles()
       step++;
     }
 
-    if (i % 100 == 0) {
+    if (i % print_steps == 0) {
       __UpdateJsonOutput(Progress, i, part_counter, vol_counter);
       std::cout << writer.write(Progress);
     }
 
-    // Move one particle.
+    // Try to move one particle.
     for (uint32_t j = 0; j < ParticleMoves; j++) {
       StepSize = part_counter.Update(__MoveParticle());
     }
 
-    // Change volume.
+    // Try to change volume.
     for (uint32_t j = 0; j < VolumeChanges; j++) {
       vol_counter.Update(__ChangeVolume());
     }
+
+    __Measure();
   }
+
   if (SavedSteps > 0) {
     __SaveSystem(step);
     SavedSteps = step+1;
@@ -375,7 +387,7 @@ template <uint32_t D> void MonteCarloSimulator<D>::UpdateParticles()
   std::cout << writer.write(Progress);
 }
 
-template <uint32_t D> void MonteCarloSimulator<D>::SaveParticles(char const * filename)
+template <uint32_t D, class Particle> void MonteCarloSimulatorNPT<D, Particle>::SaveParticles(char const * filename)
 {
   Json::Value Root;
   Root["Dimensions"] = D;
@@ -385,18 +397,15 @@ template <uint32_t D> void MonteCarloSimulator<D>::SaveParticles(char const * fi
   Root["BPSigma"] = BPSigma;
   Root["ParticleMoves"] = ParticleMoves;
   Root["VolumeChanges"] = VolumeChanges;
+  Root["ParticlesRadius"] = ParticleRadius;
 
   Root["TotalSteps"] = TotalSteps;
   Root["SaveSystemInterval"] = SaveSystemInterval;
 
-  for (uint32_t i = 0; i < ParticlesNumber; i++) {
-    Root["ParticlesRadius"][i] = Particles[i].R;
-  }
-
   for (uint32_t i = 0; i < SavedSteps; i++) {
     for (uint32_t j = 0; j < ParticlesNumber; j++) {
       for (uint32_t k = 0; k < D; k++) {
-        if (j < 2) Root["SystemSize"][i][j][k] = StoredSystemSize[i][j].X[k];
+        if (j < 2) Root["SystemSize"][i][j][k] = StoredSystemSize[i][j][k];
         Root["Particles"][i][j][k] = StoredParticles[i][j].X[k];
       }
     }

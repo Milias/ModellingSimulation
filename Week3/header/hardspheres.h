@@ -9,10 +9,10 @@ private:
   std::uniform_int_distribution<uint32_t> RandomIntDistribution;
   std::function<double()> RandomDouble;
 
-  uint32_t Dimensions = 0, SpheresNumber = 0, SpheresPerDim = 0, * LocCoefs = NULL, SavedSteps = 0;
+  uint32_t Dimensions = 0, SpheresNumber = 0, SpheresPerDim = 0, * LocCoefs= nullptr, SavedSteps = 0;
   double SphereSize = 0.0, StepSize = 0.0, PackFraction = 0.0;
 
-  Point * Spheres = NULL, * Basis = NULL, * SphereCursor = NULL, * SystemSize = NULL,  SystemSizeHalf, ** SpheresStored = NULL;
+  Point * Spheres= nullptr, * Basis= nullptr, * SphereCursor= nullptr, * SystemSize= nullptr,  SystemSizeHalf, ** SpheresStored= nullptr;
 
   void __LocateSpheres(uint32_t d);
   bool __Overlap(const Point & s1, const Point & s2);

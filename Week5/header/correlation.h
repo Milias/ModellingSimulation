@@ -4,17 +4,17 @@
 class Correlation
 {
 private:
-  Point * Spheres = NULL, * SystemSize = NULL, * SystemSizeHalf = NULL;
+  Point * Spheres= nullptr, * SystemSize= nullptr, * SystemSizeHalf= nullptr;
 
   double
-    * Distances = NULL,
-    * BinDistances = NULL,
+    * Distances= nullptr,
+    * BinDistances= nullptr,
     SphereSize,
     BinWidth,
     IDistance,
     FDistance,
-    * BoxParticleDensity = NULL,
-    * NormalizedDensity = NULL;
+    * BoxParticleDensity= nullptr,
+    * NormalizedDensity= nullptr;
 
   uint32_t
     Dimensions,
@@ -22,7 +22,7 @@ private:
     SavedSteps,
     DistancesNumber,
     BinsNumber,
-    * DistancesCount = NULL;
+    * DistancesCount= nullptr;
 
   double __Nideal(uint32_t step, uint32_t bin);
 

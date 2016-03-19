@@ -123,7 +123,7 @@ int main(int argc, char* argv[]){
 
     set_packing_fraction();
 
-    dsfmt_seed(time(NULL));
+    dsfmt_seed(time(nullptr));
 
     int move_accepted = 0;
     int vol_accepted = 0;

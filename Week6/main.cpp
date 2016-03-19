@@ -2,6 +2,6 @@
 
 int main(int argc, char ** argv)
 {
-  MonteCarloSimulator<3> mcs;
+  LennardJones<3> lds;
   return 0;
 }

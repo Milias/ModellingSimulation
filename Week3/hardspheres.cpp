@@ -48,7 +48,7 @@ bool HardSpheres::__Overlap(const Point & s1, const Point & s2)
 
 Point * HardSpheres::GenerateWithBasis(uint32_t dim, Point * basis, uint32_t sph_per_dim, double sph_size)
 {
-  if (Dimensions != dim || Basis == NULL || LocCoefs == NULL) {
+  if (Dimensions != dim || Basis == nullptr || LocCoefs == nullptr) {
     if (Basis) delete[] Basis;
     if (LocCoefs) delete[] LocCoefs;
     Basis = new Point[dim];
@@ -56,7 +56,7 @@ Point * HardSpheres::GenerateWithBasis(uint32_t dim, Point * basis, uint32_t sph
     Dimensions = dim;
   }
 
-  if (SpheresPerDim != sph_per_dim || Spheres == NULL) {
+  if (SpheresPerDim != sph_per_dim || Spheres == nullptr) {
     if (Spheres) delete[] Spheres;
     SpheresNumber = pow(sph_per_dim,Dimensions);
     Spheres = new Point[SpheresNumber];
@@ -104,7 +104,7 @@ Point * HardSpheres::GenerateFromFile(char const * filename)
 
   if (Root["FileType"] != "LatticeGenerator") {
     std::cout << "Error: trying to load wrong type of file.\n";
-    return NULL;
+    return nullptr;
   }
 
   Dimensions = Root["Dimensions"].asUInt();
@@ -154,7 +154,7 @@ Point * HardSpheres::GenerateFromFile(char const * filename)
 
 void HardSpheres::ComputeSystemSize()
 {
-  if (Spheres == NULL) return;
+  if (Spheres == nullptr) return;
 
   if (SystemSize) delete[] SystemSize;
   SystemSize = new Point[2];
@@ -182,7 +182,7 @@ void HardSpheres::ComputeSystemSize()
 
 void HardSpheres::UpdateParticles(double delta, uint32_t steps, uint32_t save_step)
 {
-  if (Spheres == NULL) return;
+  if (Spheres == nullptr) return;
   if (SpheresStored) {
     for (uint32_t i = 0; i < SavedSteps; i++) {
       delete[] SpheresStored[i];
