@@ -14,7 +14,7 @@ protected:
     SavedSteps = 0;
 
   double
-    ParticleRadius = 0.0,
+    ParticlesRadius = 0.0,
     StepSize = 0.0,
     Volume = 0.0,
     Density = 0.0,
@@ -30,6 +30,8 @@ protected:
     HalfSystemSize;
 
   RandomGenerator Random;
+
+  virtual void __PostInitialize(Json::Value & root) {}
 
   bool __Overlap(const Particle & p1, const Particle & p2, double dist);
   double __ComputeDistance2(const Vector<D> & p1, const Vector<D> & p2);
@@ -109,8 +111,8 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::
   }
 
   for (uint32_t i = 0; i < D; i++) {
-    SystemSize[0][i] -= 0.001;
-    SystemSize[1][i] += 0.001;
+    SystemSize[0][i] -= ParticlesRadius + 0.001;
+    SystemSize[1][i] += ParticlesRadius + 0.001;
   }
 }
 
@@ -129,7 +131,7 @@ template <uint32_t D, class Particle> bool MonteCarloSimulatorNVT<D, Particle>::
   // Check overlap. TODO: quadtree / octree ?
   for (uint32_t k = 0; k < ParticlesNumber; k++) {
     if (k == old_pos - Particles) { continue; }
-    if (__Overlap(new_pos, Particles[k], 2.0 * ParticleRadius)) {
+    if (__Overlap(new_pos, Particles[k], 2.0 * ParticlesRadius)) {
       return false;
     }
   }
@@ -168,10 +170,13 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::
 
   ParticleMoves = Root["ParticleMoves"].asUInt();
   StepSize = Root["StepSize"].asDouble();
+  Beta = Root["Beta"].asDouble();
 
   TotalSteps = Root["TotalSteps"].asUInt();
   SaveSystemInterval = Root["SaveSystemInterval"].asUInt();
   SavedSteps = SaveSystemInterval > 0 ? TotalSteps / SaveSystemInterval + 1 : 0;
+
+  __PostInitialize(Root);
 }
 
 template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::LoadParticles(char const * filename)
@@ -188,8 +193,7 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::
   }
 
   ParticlesNumber = Root["ParticlesNumber"].asUInt();
-  ParticleRadius = Root["ParticleRadius"].asDouble();
-  Beta = Root["Beta"].asDouble();
+  ParticlesRadius = Root["ParticlesRadius"].asDouble();
 
   if (ParticleMoves == 0) ParticleMoves = ParticlesNumber;
 
@@ -203,8 +207,8 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::
   SystemSize = new Vector<D>[2];
 
   for (uint32_t i = 0; i < D; i++) {
-    SystemSize[0][i] = Root["SystemSize"][starting_step][0][i].asDouble();
-    SystemSize[1][i] = Root["SystemSize"][starting_step][1][i].asDouble();
+    SystemSize[0][i] = Root["SystemSize"][0][i].asDouble();
+    SystemSize[1][i] = Root["SystemSize"][1][i].asDouble();
   }
 
   Volume = 1.0;
@@ -241,12 +245,15 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::
 template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::UpdateParticles()
 {
   if (Particles == nullptr) return;
-  StepSizeAdapter part_counter(StepSize, 1e-6 * ParticleRadius, 2.0 * ParticleRadius);
+  double max_step_size = SystemSize[1][0] - SystemSize[0][0];
+  for (uint32_t i = 1; i < D; i++) {
+     max_step_size = SystemSize[1][i] - SystemSize[0][i] > max_step_size ? SystemSize[1][i] - SystemSize[0][i] : max_step_size;
+  }
+  StepSizeAdapter part_counter(StepSize, 1e-6 * ParticlesRadius, max_step_size * 0.5);
 
   Json::Value Progress;
   Json::FastWriter writer;
   __UpdateJsonOutput(Progress, 0, part_counter);
-  std::cout << writer.write(Progress);
 
   uint32_t step = 0, print_steps = std::min(uint32_t(100),TotalSteps/100+1);
   for (uint32_t i = 0; i < TotalSteps; i++) {
@@ -283,12 +290,21 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::
   Root["ParticlesNumber"] = ParticlesNumber;
   Root["SavedSteps"] = SavedSteps;
   Root["ParticleMoves"] = ParticleMoves;
-  Root["ParticlesRadius"] = ParticleRadius;
+  Root["ParticlesRadius"] = ParticlesRadius;
   Root["Volume"] = Volume;
   Root["Density"] = Density;
 
   Root["TotalSteps"] = TotalSteps;
   Root["SaveSystemInterval"] = SaveSystemInterval;
+
+  for (uint32_t i = 0; i < D; i++) {
+    Root["SystemSize"][0][i] = SystemSize[0][i];
+    Root["SystemSize"][1][i] = SystemSize[1][i];
+  }
+
+  for (uint32_t i = 0; i < SavedSteps; i++) {
+    Root["PartDelta"][i] = StoredStepSize[i];
+  }
 
   for (uint32_t i = 0; i < SavedSteps; i++) {
     for (uint32_t j = 0; j < ParticlesNumber; j++) {

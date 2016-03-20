@@ -56,6 +56,7 @@ protected:
     * StoredEnergy = nullptr,
     * StoredVirial = nullptr;
 
+  void __PostInitialize(Json::Value & root);
   void __ParticleEnergy(LJParticle<D> * p);
   void __PostSaveSystem(uint32_t step);
   void __PostLoadParticles(Json::Value & root);
@@ -79,6 +80,22 @@ template <uint32_t D> LennardJones<D>::~LennardJones()
   if (StoredVirial) delete[] StoredVirial;
 }
 
+template <uint32_t D> void LennardJones<D>::__PostInitialize(Json::Value & root)
+{
+  MuExcessTests = root["MuExcessTests"].asUInt();
+  RCut = root["RCut"].asDouble();
+
+  if (StoredPressure) delete[] StoredPressure;
+  if (StoredMuExcess) delete[] StoredMuExcess;
+  if (StoredEnergy) delete[] StoredEnergy;
+  if (StoredVirial) delete[] StoredVirial;
+
+  StoredPressure = new double[this->SavedSteps];
+  StoredMuExcess = new double[this->SavedSteps];
+  StoredEnergy = new double[this->SavedSteps];
+  StoredVirial = new double[this->SavedSteps];
+}
+
 template <uint32_t D> void LennardJones<D>::__ParticleEnergy(LJParticle<D> * p)
 {
   uint32_t this_part_index = p - this->Particles;
@@ -90,6 +107,8 @@ template <uint32_t D> void LennardJones<D>::__ParticleEnergy(LJParticle<D> * p)
     dist = this->__ComputeDistance2(p->X, this->Particles[i].X);
     p->Energy += LJPotential(dist, RCut);
     p->Virial += LJVirial(dist, RCut);
+
+    //printf("dist: %f, E: %f, V: %f\n", dist, p->Energy, p->Virial);
   }
 }
 
@@ -103,8 +122,8 @@ template <uint32_t D> void LennardJones<D>::__PostSaveSystem(uint32_t step)
 
 template <uint32_t D> void LennardJones<D>::__PostLoadParticles(Json::Value & root)
 {
-  MuExcessTests = root["MuExcessTests"].asUInt();
-
+  Energy = 0.0;
+  Virial = 0.0;
   for (uint32_t i = 0; i < this->ParticlesNumber; i++) {
     __ParticleEnergy(this->Particles + i);
     Energy += this->Particles[i].Energy;
@@ -114,6 +133,8 @@ template <uint32_t D> void LennardJones<D>::__PostLoadParticles(Json::Value & ro
   // Because of overcounting. TODO: more efficiently ?
   Energy *= 0.5;
   Virial *= 0.5;
+
+  RCut *= this->ParticlesRadius;
 }
 
 template <uint32_t D> void LennardJones<D>::__PostSaveParticles(Json::Value & root)
@@ -136,7 +157,7 @@ template <uint32_t D> double LennardJones<D>::__TestAddParticle()
   // Computes energy of the particle.
   __ParticleEnergy(&test_part);
 
-  return test_part.Energy;
+  return test_part.Energy + test_part.Virial;
 }
 
 template <uint32_t D> double LennardJones<D>::__ComputeMuExcess()
