@@ -5,7 +5,8 @@ double LJPotential(double r, double cut) {
   if (r > cut) {
     return 0.0;
   } else {
-    double r6 = 1.0 / (r * r * r), cut6 = 1.0 / (cut * cut * cut);
+    double r6 = 1.0 / (r * r * r), cut6 = 1.0 / (cut * cut * cut * cut * cut * cut);
+    //printf("r_cut: %f\n", cut);
     return 4.0 * (r6 * (r6 - 1.0) - cut6 * (cut6 - 1.0));
   }
 }
@@ -108,7 +109,7 @@ template <uint32_t D> void LennardJones<D>::__ParticleEnergy(LJParticle<D> * p)
     p->Energy += LJPotential(dist, RCut);
     p->Virial += LJVirial(dist, RCut);
 
-    //printf("dist: %f, E: %f, V: %f\n", dist, p->Energy, p->Virial);
+    if (dist < RCut) printf("dist: %f, E: %f, V: %f\n", dist, LJPotential(dist, RCut), LJVirial(dist, RCut));
   }
 }
 
@@ -134,7 +135,7 @@ template <uint32_t D> void LennardJones<D>::__PostLoadParticles(Json::Value & ro
   Energy *= 0.5;
   Virial *= 0.5;
 
-  RCut *= this->ParticlesRadius;
+  printf("Density: %f, Energy: %f, Virial: %f\n", this->Density, Energy, Virial);
 }
 
 template <uint32_t D> void LennardJones<D>::__PostSaveParticles(Json::Value & root)
@@ -157,7 +158,7 @@ template <uint32_t D> double LennardJones<D>::__TestAddParticle()
   // Computes energy of the particle.
   __ParticleEnergy(&test_part);
 
-  return test_part.Energy + test_part.Virial;
+  return test_part.Energy;
 }
 
 template <uint32_t D> double LennardJones<D>::__ComputeMuExcess()
@@ -196,6 +197,6 @@ template <uint32_t D> bool LennardJones<D>::__MoveParticle()
 
 template <uint32_t D> void LennardJones<D>::__Measure()
 {
-  Pressure = this->Density / this->Beta + Virial;
+  Pressure = this->Density  / this->Beta + Virial;
   MuExcess = __ComputeMuExcess();
 }

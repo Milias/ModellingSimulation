@@ -1,3 +1,5 @@
+#pragma once
+#include <cmath>
 /*
   This structure defines an N-dimensional
   point in space, alongside a variety of

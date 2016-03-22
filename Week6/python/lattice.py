@@ -83,10 +83,12 @@ def GenerateFCC(N, part_radius, scale, filename):
     data["Particles"][0].append(list(sum(basis * p, axis=1)))
 
   particles = array(data["Particles"][0])
-  data["SystemSize"] = [list(amin(particles, axis=0) - 0.001), list(amax(particles, axis=0) + 0.001)]
+  data["SystemSize"] = [list(amin(particles, axis=0) - (part_radius + 0.001)), list(amax(particles, axis=0) + (part_radius + 0.001))]
+
+  print(data["SystemSize"])
 
   f.write(json.dumps(data))
   f.close()
   return "Saved to %s successfully." %  filename
 
-GenerateFCC([4]*3, 0.5, 2.5, "data/test-fcc.json")
+GenerateFCC([2]*3, 1.0, 3.5, "data/test-fcc.json")

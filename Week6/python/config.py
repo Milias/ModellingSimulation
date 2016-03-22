@@ -21,4 +21,4 @@ def SaveInitFile(part_moves, step_size, beta, mu_tests, r_cut, total_steps, save
     print(e)
     return e
 
-SaveInitFile(0, 0.1, 1, 1000, 2.5, 10000, 100, "data/config.json")
+SaveInitFile(0, 0.1, 1, 1000, 2.5, 1, 10, "data/config.json")
