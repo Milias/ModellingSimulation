@@ -33,3 +33,18 @@ def PlotQuantityVsQuantity(filename, key1, key2, start):
 
   avg = average(data[key2][start:])
   return (data[key1],avg)
+
+def PlotQuantityVsQuantityAvg(filenames, key1, key2, start):
+  try:
+    f = [open(filename, "r") for filename in filenames]
+  except Exception as e:
+    print(e)
+    return 0.0
+
+  data = [json.loads(i.read()) for i in f]
+  for i in f: i.close()
+
+  avg = [average(i[key2][start:]) for i in data]
+  avg = [i for i in avg if float('Inf') != i]
+  avg = average(avg)
+  return (data[0][key1],avg)

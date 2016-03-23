@@ -34,17 +34,18 @@ ax.set_title(r"Virial - $\langle V \rangle = %.3f$" % avg)
 """
 #"""
 ax = fig.add_subplot(1,1,1)
-titles = {"Pressure": "Pressure", "MuExcess": "$\mu_{ex}$"}
-symbol = {"Pressure": "P", "MuExcess": "$\mu_{ex}$"}
-key2 = "Pressure"
+titles = {"Pressure": "Pressure", "MuExcess": r"$\mu_{ex}$", "Virial": "Virial", "Energy": "Energy"}
+symbol = {"Pressure": "P", "MuExcess": r"\mu_{ex}", "Virial": "V", "Energy": "E"}
+key2 = "Energy"
 x = []
 y = [[],[],[]]
-for i in range(8,25):
-  x0, y0 = graphs.PlotQuantityVsQuantity("data/1/evol-fcc-%d.json" % i, "Density", key2, start)
+for i in range(5,25):
+  if i == 15: continue
+  x0, y0 = graphs.PlotQuantityVsQuantityAvg(["data/1/evol-fcc-%d-%d.json" % (i, j) for j in range(1,11)], "Density", key2, start)
   x.append(x0)
   y[0].append(y0)
-  y[1].append(graphs.PlotQuantityVsQuantity("data/2/evol-fcc-%d.json" % i, "Density", key2, start)[1])
-  y[2].append(graphs.PlotQuantityVsQuantity("data/0.5/evol-fcc-%d.json" % i, "Density", key2, start)[1])
+  y[1].append(graphs.PlotQuantityVsQuantityAvg(["data/2/evol-fcc-%d-%d.json" % (i, j) for j in range(1,11)], "Density", key2, start)[1])
+  y[2].append(graphs.PlotQuantityVsQuantityAvg(["data/0.5/evol-fcc-%d-%d.json" % (i, j) for j in range(1,11)], "Density", key2, start)[1])
 
 y = array(y)
 x = array(x)
@@ -59,8 +60,8 @@ for i in range(3):
 
 plt.legend(loc=0,numpoints=1)
 plt.xlabel(r"Density / $\rho \sigma^3$")
-plt.ylabel(r"%s / $\rangle %s \langle$" % (titles[key2], symbol[key2]))
+plt.ylabel(r"%s / $\langle %s \rangle$" % (titles[key2], symbol[key2]))
 plt.title("%s vs Density" % titles[key2])
-plt.savefig("report/graphs/P_rho_b.pdf")
+plt.savefig("report/graphs/E_rho.pdf")
 #"""
 plt.show()
