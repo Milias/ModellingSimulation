@@ -89,5 +89,8 @@ def GenerateFCC(N, part_radius, scale, filename):
   f.close()
   return "Saved to %s successfully." %  filename
 
+for i, x in enumerate(linspace(0.5,2.0,15)):
+  GenerateFCC([3]*3, 1.0, x, "data/density/fcc-%d.json" % i
+
 for i, x in enumerate(linspace(2.0,5.0,10)):
   GenerateFCC([3]*3, 1.0, x, "data/density/fcc-%d.json" % (i+15))
