@@ -52,8 +52,8 @@ x = array(x)
 
 kwargs = [
   {"color":"r", "marker":"o", "linestyle":"-", "label":r"$k_B T / \epsilon = 1.0$"},
-  {"color":"b", "marker":"o", "linestyle":"-", "label":r"$k_B T / \epsilon = 2.0$"},
-  {"color":"m", "marker":"o", "linestyle":"-", "label":r"$k_B T / \epsilon = 0.5$"}]
+  {"color":"b", "marker":"o", "linestyle":"-", "label":r"$k_B T / \epsilon = 0.5$"},
+  {"color":"m", "marker":"o", "linestyle":"-", "label":r"$k_B T / \epsilon = 2.0$"}]
 
 for i in range(3):
   ax.plot(x,y[i],**kwargs[i])
