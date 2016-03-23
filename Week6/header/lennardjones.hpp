@@ -109,7 +109,7 @@ template <uint32_t D> void LennardJones<D>::__ParticleEnergy(LJParticle<D> * p)
     p->Energy += LJPotential(dist, RCut);
     p->Virial += LJVirial(dist, RCut);
 
-    if (dist < RCut) printf("dist: %f, E: %f, V: %f\n", dist, LJPotential(dist, RCut), LJVirial(dist, RCut));
+    //if (dist < RCut) printf("%d, dist: %f, (%f,%f,%f), (%f,%f,%f)\n", this_part_index, dist, p->X[0], p->X[1], p->X[2], this->Particles[i].X[0], this->Particles[i].X[1], this->Particles[i].X[2]);
   }
 }
 
@@ -167,7 +167,8 @@ template <uint32_t D> double LennardJones<D>::__ComputeMuExcess()
   for (uint32_t i = 0; i < MuExcessTests; i++) {
     average += std::exp(-this->Beta*__TestAddParticle());
   }
-  return -std::log(average/MuExcessTests)/this->Beta;
+  //printf("mu_ex: %f\n", average);
+  return average > 0 ? -std::log(average/MuExcessTests)/this->Beta : MuExcess;
 }
 
 template <uint32_t D> bool LennardJones<D>::__MoveParticle()
