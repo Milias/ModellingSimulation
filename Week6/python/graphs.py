@@ -62,6 +62,6 @@ plt.legend(loc=0,numpoints=1)
 plt.xlabel(r"Density / $\rho \sigma^3$")
 plt.ylabel(r"%s / $\langle %s \rangle$" % (titles[key2], symbol[key2]))
 plt.title("%s vs Density" % titles[key2])
-plt.savefig("report/graphs/mu_rho_b.pdf")
+plt.savefig("report/graphs/mu_rho.pdf")
 #"""
 plt.show()
