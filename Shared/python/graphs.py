@@ -34,7 +34,7 @@ def PlotQuantityVsQuantity(filename, key1, key2, start):
   avg = average(data[key2][start:])
   return (data[key1],avg)
 
-def PlotQuantityVsQuantityAvg(filenames, key1, key2, start):
+def PlotQuantityVsQuantityAvg(filenames, key1, key2, start, beta):
   try:
     f = [open(filename, "r") for filename in filenames]
   except Exception as e:
@@ -48,5 +48,5 @@ def PlotQuantityVsQuantityAvg(filenames, key1, key2, start):
   avg = [i for i in avg if float('Inf') != i]
   avg = average(avg)
   if key2 == "MuExcess":
-    avg += log(data["Density"])/data["Beta"]
+    avg += log(data[0]["Density"])/beta
   return (data[0][key1],avg)

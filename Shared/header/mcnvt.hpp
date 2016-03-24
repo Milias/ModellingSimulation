@@ -293,6 +293,7 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::
   Root["ParticlesRadius"] = ParticlesRadius;
   Root["Volume"] = Volume;
   Root["Density"] = Density;
+  Root["Beta"] = Beta;
 
   Root["TotalSteps"] = TotalSteps;
   Root["SaveSystemInterval"] = SaveSystemInterval;
