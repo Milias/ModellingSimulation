@@ -1,5 +1,5 @@
 #pragma once
-#include "mcnvt.hpp"
+#include "mcmuvt.hpp"
 
 double LJPotential(double r, double cut) {
   if (r > cut) {
@@ -40,7 +40,7 @@ template <uint32_t D> struct LJParticle : GenericParticle<D>
   }
 };
 
-template <uint32_t D> class LennardJones : public MonteCarloSimulatorNVT<D, LJParticle<D>>
+template <uint32_t D> class LennardJones : public MonteCarloSimulatorMuVT<D, LJParticle<D>>
 {
 protected:
   uint32_t
