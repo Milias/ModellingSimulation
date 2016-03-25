@@ -1,5 +1,5 @@
 CXXFLAGS += -std=c++14 -pedantic -Wall -O3 -Iheader -I../Shared/json -I../Shared/header
-TARGET = bin/week6
+TARGET = bin/week7
 
 CPP = $(wildcard *.cpp)
 OBJ = $(CPP:.cpp=.o)

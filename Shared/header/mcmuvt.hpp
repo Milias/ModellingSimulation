@@ -7,9 +7,9 @@ template <uint32_t D, class Particle> class MonteCarloSimulatorMuVT
 {
 protected:
   uint32_t
+    CurrentStep = 0,
     MaxParticlesNumber = 0,
     ParticlesNumber = 0,
-    ParticleMoves = 0,
     TotalSteps = 0,
     SaveSystemInterval = 0,
     SavedSteps = 0,
@@ -25,9 +25,13 @@ protected:
     * StoredStepSize = nullptr,
     * StoredDensity = nullptr;
 
+  // true: filled particle, false: freed particle.
+  bool * RemovedParticles = nullptr;
+
   Particle
     * Particles = nullptr,
-    ** StoredParticles = nullptr;
+    ** StoredParticles = nullptr,
+    * ParticleToAdd = nullptr;
 
   Vector<D>
     * SystemSize = nullptr,
@@ -42,13 +46,13 @@ protected:
   void __SaveSystem(uint32_t step);
   virtual void __PostSaveSystem(uint32_t step) {}
 
-  virtual double __ParticleEnergy(Particle * p) = 0;
+  virtual void __ParticleEnergy(Particle * p) = 0;
   virtual bool __MoveParticle() = 0;
   virtual bool __AddParticle() = 0;
   virtual bool __RemoveParticle() = 0;
   virtual void __Measure() {}
 
-  virtual void __UpdateJsonOutput(Json::Value & root, uint32_t step, StepSizeAdapter & part);
+  virtual void __UpdateJsonOutput(Json::Value & root, StepSizeAdapter & part);
   virtual void __PostLoadParticles(Json::Value & root) {}
   virtual void __PostSaveParticles(Json::Value & root) {}
 
@@ -66,14 +70,14 @@ public:
 template <uint32_t D, class Particle> MonteCarloSimulatorMuVT<D, Particle>::~MonteCarloSimulatorMuVT()
 {
   if (Particles) delete[] Particles;
+  if (RemovedParticles) delete[] RemovedParticles;
   if (SystemSize) delete[] SystemSize;
   if (StoredStepSize) { delete[] StoredStepSize; }
   if (StoredParticlesNumber) { delete[] StoredParticlesNumber; }
+  if (StoredDensity) { delete[] StoredDensity; }
 
   if (StoredParticles) {
-    for (uint32_t i = 0; i < SavedSteps; i++) {
-      delete[] StoredParticles[i];
-    }
+    for (uint32_t i = 0; i < SavedSteps; i++) { if (StoredParticles[i]) delete[] StoredParticles[i]; }
     delete[] StoredParticles;
   }
 }
@@ -94,20 +98,28 @@ template <uint32_t D, class Particle> double MonteCarloSimulatorMuVT<D, Particle
 template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>::__SaveSystem(uint32_t step)
 {
   StoredStepSize[step] = StepSize;
-  for (uint32_t i = 0; i < ParticlesNumber; i++) {
-    StoredParticles[step][i] = Particles[i];
+  StoredParticlesNumber[step] = ParticlesNumber;
+  StoredDensity[step] = Density;
+
+  StoredParticles[step] = new Particle[ParticlesNumber];
+  for (uint32_t i = 0, count = 0; i < MaxParticlesNumber; i++) {
+    if (RemovedParticles[i]) {
+      StoredParticles[step][count] = Particles[i];
+      count++;
+    }
   }
 
   __PostSaveSystem(step);
 }
 
-template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>::__UpdateJsonOutput(Json::Value & root, uint32_t step, StepSizeAdapter & part)
+template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>::__UpdateJsonOutput(Json::Value & root, StepSizeAdapter & part)
 {
-  root["CurrentStep"] = step;
+  root["CurrentStep"] = CurrentStep;
   root["TotalSteps"] = TotalSteps;
   root["PartRate"] = part.rate;
   root["PartCount"] = part.count;
   root["PartDelta"] = part.delta;
+  root["ParticlesNumber"] = ParticlesNumber;
 }
 
 template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>::InitializeFromFile(char const * filename)
@@ -118,9 +130,13 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
   savefile >> Root;
   savefile.close();
 
-  ParticleMoves = Root["ParticleMoves"].asUInt();
   StepSize = Root["StepSize"].asDouble();
   Beta = Root["Beta"].asDouble();
+  Mu = Root["Mu"].asDouble();
+  MaxParticlesNumber = Root["MaxParticlesNumber"].asUInt();
+
+  if (RemovedParticles) delete[] RemovedParticles;
+  RemovedParticles = new bool[MaxParticlesNumber];
 
   TotalSteps = Root["TotalSteps"].asUInt();
   SaveSystemInterval = Root["SaveSystemInterval"].asUInt();
@@ -144,15 +160,17 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
 
   ParticlesNumber = Root["ParticlesNumber"].asUInt();
   ParticlesRadius = Root["ParticlesRadius"].asDouble();
-  Mu = Root["Mu"].asDouble();
-
-  if (ParticleMoves == 0) ParticleMoves = ParticlesNumber;
 
   Random.SetRange(0, ParticlesNumber - 1);
   uint32_t starting_step = Root["SavedSteps"].asUInt() - 1;
 
   if (Particles) delete[] Particles;
-  Particles = new Particle[ParticlesNumber];
+  Particles = new Particle[MaxParticlesNumber];
+  ParticleToAdd = Particles + ParticlesNumber;
+
+  for (uint32_t i = 0; i < MaxParticlesNumber; i++) {
+    RemovedParticles[i] = i < ParticlesNumber ? true : false;
+  }
 
   if (SystemSize) delete[] SystemSize;
   SystemSize = new Vector<D>[2];
@@ -183,9 +201,6 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
   }
 
   StoredParticles = new Particle*[SavedSteps];
-  for (uint32_t i = 0; i < SavedSteps; i++) {
-    StoredParticles[i] = new Particle[ParticlesNumber];
-  }
 
   if (StoredStepSize) { delete[] StoredStepSize; }
   StoredStepSize = new double[SavedSteps];
@@ -194,7 +209,7 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
   StoredDensity = new double[SavedSteps];
 
   if (StoredParticlesNumber) { delete[] StoredParticlesNumber; }
-  StoredParticlesNumber = new double[SavedSteps];
+  StoredParticlesNumber = new uint32_t[SavedSteps];
 
   __PostLoadParticles(Root);
 }
@@ -210,10 +225,13 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
 
   Json::Value Progress;
   Json::FastWriter writer;
-  __UpdateJsonOutput(Progress, 0, part_counter);
+  CurrentStep = 0;
+  __UpdateJsonOutput(Progress, part_counter);
 
   uint32_t step = 0, print_steps = std::min(uint32_t(100),TotalSteps/100+1);
   for (uint32_t i = 0; i < TotalSteps; i++) {
+    CurrentStep = i;
+
     // Save spheres.
     if (SaveSystemInterval > 0 && i % SaveSystemInterval == 0) {
       __Measure();
@@ -222,13 +240,27 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
     }
 
     if (i % print_steps == 0) {
-      __UpdateJsonOutput(Progress, i, part_counter);
+      __UpdateJsonOutput(Progress, part_counter);
       std::cout << writer.write(Progress);
     }
 
-    // Try to move one particle.
-    for (uint32_t j = 0; j < ParticleMoves; j++) {
+    for (uint32_t j = 0; j < ParticlesNumber; j++) {
+      // Try to move one particle.
       StepSize = part_counter.Update(__MoveParticle());
+    }
+
+    if (Random.RandomProb() > 0.5) {
+      if (__AddParticle()) {
+        ParticlesNumber++;
+        Random.SetRange(0, ParticlesNumber - 1);
+        Density = ParticlesNumber / Volume;
+      }
+    } else {
+      if (__RemoveParticle()) {
+        ParticlesNumber--;
+        Random.SetRange(0, ParticlesNumber - 1);
+        Density = ParticlesNumber / Volume;
+      }
     }
   }
 
@@ -236,7 +268,8 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
     __SaveSystem(step);
     SavedSteps = step+1;
   }
-  __UpdateJsonOutput(Progress, TotalSteps, part_counter);
+  CurrentStep = TotalSteps;
+  __UpdateJsonOutput(Progress, part_counter);
   std::cout << writer.write(Progress);
 }
 
@@ -244,13 +277,12 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
 {
   Json::Value Root;
   Root["Dimensions"] = D;
-  Root["ParticlesNumber"] = ParticlesNumber;
   Root["SavedSteps"] = SavedSteps;
-  Root["ParticleMoves"] = ParticleMoves;
+  Root["MaxParticlesNumber"] = MaxParticlesNumber;
   Root["ParticlesRadius"] = ParticlesRadius;
   Root["Volume"] = Volume;
-  Root["Density"] = Density;
   Root["Beta"] = Beta;
+  Root["Mu"] = Mu;
 
   Root["TotalSteps"] = TotalSteps;
   Root["SaveSystemInterval"] = SaveSystemInterval;
@@ -262,10 +294,12 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
 
   for (uint32_t i = 0; i < SavedSteps; i++) {
     Root["PartDelta"][i] = StoredStepSize[i];
+    Root["ParticlesNumber"][i] = StoredParticlesNumber[i];
+    Root["Density"][i] = StoredDensity[i];
   }
 
   for (uint32_t i = 0; i < SavedSteps; i++) {
-    for (uint32_t j = 0; j < ParticlesNumber; j++) {
+    for (uint32_t j = 0; j < StoredParticlesNumber[i]; j++) {
       for (uint32_t k = 0; k < D; k++) {
         Root["Particles"][i][j][k] = StoredParticles[i][j].X[k];
       }

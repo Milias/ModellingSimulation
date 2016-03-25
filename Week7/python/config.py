@@ -2,12 +2,12 @@
 from numpy import *
 import json
 
-def SaveInitFile(part_moves, step_size, beta, mu_tests, r_cut, total_steps, save_interval, filename):
+def SaveInitFile(step_size, max_parts, beta, mu, r_cut, total_steps, save_interval, filename):
   data = {}
-  data["ParticleMoves"] = part_moves
+  data["MaxParticlesNumber"] = max_parts
   data["StepSize"] = step_size
   data["Beta"] = beta
-  data["MuExcessTests"] = mu_tests
+  data["Mu"] = mu
   data["RCut"] = r_cut
   data["TotalSteps"] = total_steps
   data["SaveSystemInterval"] = save_interval
@@ -21,5 +21,8 @@ def SaveInitFile(part_moves, step_size, beta, mu_tests, r_cut, total_steps, save
     print(e)
     return e
 
-for i in [0.5, 1.0, 2.0]:
-  SaveInitFile(0, 0.1, i, 1000, 2.5, 30000, 300, "data/config-%1.1f.json" % i)
+nf = 0
+for mu in linspace(0.5, 3.0, 3):
+  for beta in [0.5]:
+    SaveInitFile(0.1, 1000, beta, -mu, 2.5, 10000, 50, "data/config/config-%d.json" % nf)
+    nf+=1

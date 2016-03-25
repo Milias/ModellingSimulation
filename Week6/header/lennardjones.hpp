@@ -1,13 +1,12 @@
 #pragma once
 #include "mcnvt.hpp"
 
-double LJPotential(double r, double cut) {
+double LJPotential(double r, double cut, double e_cut) {
   if (r > cut) {
     return 0.0;
   } else {
-    double r6 = 1.0 / (r * r * r), cut6 = 1.0 / (cut * cut * cut * cut * cut * cut);
-    //printf("r_cut: %f\n", cut);
-    return 4.0 * (r6 * (r6 - 1.0) - cut6 * (cut6 - 1.0));
+    double r6 = 1.0 / (r * r * r);
+    return 4.0 * (r6 * (r6 - 1.0) - e_cut);
   }
 }
 
@@ -48,6 +47,7 @@ protected:
 
   double
     RCut = 0.0,
+    ECut = 0.0,
     Pressure = 0.0,
     MuExcess = 0.0,
     Energy = 0.0,
@@ -106,10 +106,8 @@ template <uint32_t D> void LennardJones<D>::__ParticleEnergy(LJParticle<D> * p)
   for (uint32_t i = 0; i < this->ParticlesNumber; i++) {
     if (this_part_index == i) continue;
     dist = this->__ComputeDistance2(p->X, this->Particles[i].X);
-    p->Energy += LJPotential(dist, RCut);
+    p->Energy += LJPotential(dist, RCut, ECut);
     p->Virial += LJVirial(dist, RCut);
-
-    //if (dist < RCut) printf("%d, dist: %f, (%f,%f,%f), (%f,%f,%f)\n", this_part_index, dist, p->X[0], p->X[1], p->X[2], this->Particles[i].X[0], this->Particles[i].X[1], this->Particles[i].X[2]);
   }
 }
 
@@ -123,6 +121,8 @@ template <uint32_t D> void LennardJones<D>::__PostSaveSystem(uint32_t step)
 
 template <uint32_t D> void LennardJones<D>::__PostLoadParticles(Json::Value & root)
 {
+  ECut = 4.0 * ( std::pow(1.0 / RCut, 12) - std::pow(1.0 / RCut, 6) );
+
   Energy = 0.0;
   Virial = 0.0;
   for (uint32_t i = 0; i < this->ParticlesNumber; i++) {
@@ -134,8 +134,6 @@ template <uint32_t D> void LennardJones<D>::__PostLoadParticles(Json::Value & ro
   // Because of overcounting. TODO: more efficiently ?
   Energy *= 0.5;
   Virial *= 0.5;
-
-  printf("Density: %f, Energy: %f, Virial: %f\n", this->Density, Energy, Virial);
 }
 
 template <uint32_t D> void LennardJones<D>::__PostSaveParticles(Json::Value & root)
@@ -167,7 +165,6 @@ template <uint32_t D> double LennardJones<D>::__ComputeMuExcess()
   for (uint32_t i = 0; i < MuExcessTests; i++) {
     average += std::exp(-this->Beta*__TestAddParticle());
   }
-  //printf("mu_ex: %f\n", average);
   return average > 0 ? -std::log(average/MuExcessTests)/this->Beta : MuExcess;
 }
 

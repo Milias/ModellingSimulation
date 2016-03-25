@@ -1,13 +1,12 @@
 #pragma once
 #include "mcmuvt.hpp"
 
-double LJPotential(double r, double cut) {
+double LJPotential(double r, double cut, double e_cut) {
   if (r > cut) {
     return 0.0;
   } else {
-    double r6 = 1.0 / (r * r * r), cut6 = 1.0 / (cut * cut * cut * cut * cut * cut);
-    //printf("r_cut: %f\n", cut);
-    return 4.0 * (r6 * (r6 - 1.0) - cut6 * (cut6 - 1.0));
+    double r6 = 1.0 / (r * r * r);
+    return 4.0 * (r6 * (r6 - 1.0)) - e_cut;
   }
 }
 
@@ -43,17 +42,13 @@ template <uint32_t D> struct LJParticle : GenericParticle<D>
 template <uint32_t D> class LennardJones : public MonteCarloSimulatorMuVT<D, LJParticle<D>>
 {
 protected:
-  uint32_t
-    MuExcessTests = 0;
-
   double
     RCut = 0.0,
+    ECut = 0.0,
     Pressure = 0.0,
-    MuExcess = 0.0,
     Energy = 0.0,
     Virial = 0.0,
     * StoredPressure = nullptr,
-    * StoredMuExcess = nullptr,
     * StoredEnergy = nullptr,
     * StoredVirial = nullptr;
 
@@ -63,9 +58,9 @@ protected:
   void __PostLoadParticles(Json::Value & root);
   void __PostSaveParticles(Json::Value & root);
 
-  double __TestAddParticle();
-  double __ComputeMuExcess();
   bool __MoveParticle();
+  bool __AddParticle();
+  bool __RemoveParticle();
   void __Measure();
 
 public:
@@ -76,23 +71,19 @@ public:
 template <uint32_t D> LennardJones<D>::~LennardJones()
 {
   if (StoredPressure) delete[] StoredPressure;
-  if (StoredMuExcess) delete[] StoredMuExcess;
   if (StoredEnergy) delete[] StoredEnergy;
   if (StoredVirial) delete[] StoredVirial;
 }
 
 template <uint32_t D> void LennardJones<D>::__PostInitialize(Json::Value & root)
 {
-  MuExcessTests = root["MuExcessTests"].asUInt();
   RCut = root["RCut"].asDouble();
 
   if (StoredPressure) delete[] StoredPressure;
-  if (StoredMuExcess) delete[] StoredMuExcess;
   if (StoredEnergy) delete[] StoredEnergy;
   if (StoredVirial) delete[] StoredVirial;
 
   StoredPressure = new double[this->SavedSteps];
-  StoredMuExcess = new double[this->SavedSteps];
   StoredEnergy = new double[this->SavedSteps];
   StoredVirial = new double[this->SavedSteps];
 }
@@ -106,23 +97,22 @@ template <uint32_t D> void LennardJones<D>::__ParticleEnergy(LJParticle<D> * p)
   for (uint32_t i = 0; i < this->ParticlesNumber; i++) {
     if (this_part_index == i) continue;
     dist = this->__ComputeDistance2(p->X, this->Particles[i].X);
-    p->Energy += LJPotential(dist, RCut);
+    p->Energy += LJPotential(dist, RCut, ECut);
     p->Virial += LJVirial(dist, RCut);
-
-    //if (dist < RCut) printf("%d, dist: %f, (%f,%f,%f), (%f,%f,%f)\n", this_part_index, dist, p->X[0], p->X[1], p->X[2], this->Particles[i].X[0], this->Particles[i].X[1], this->Particles[i].X[2]);
   }
 }
 
 template <uint32_t D> void LennardJones<D>::__PostSaveSystem(uint32_t step)
 {
   StoredPressure[step] = Pressure;
-  StoredMuExcess[step] = MuExcess;
   StoredEnergy[step] = Energy;
   StoredVirial[step] = Virial;
 }
 
 template <uint32_t D> void LennardJones<D>::__PostLoadParticles(Json::Value & root)
 {
+  ECut = 4.0 * ( std::pow(1.0 / RCut, 12) - std::pow(1.0 / RCut, 6) );
+
   Energy = 0.0;
   Virial = 0.0;
   for (uint32_t i = 0; i < this->ParticlesNumber; i++) {
@@ -134,41 +124,101 @@ template <uint32_t D> void LennardJones<D>::__PostLoadParticles(Json::Value & ro
   // Because of overcounting. TODO: more efficiently ?
   Energy *= 0.5;
   Virial *= 0.5;
-
-  printf("Density: %f, Energy: %f, Virial: %f\n", this->Density, Energy, Virial);
 }
 
 template <uint32_t D> void LennardJones<D>::__PostSaveParticles(Json::Value & root)
 {
   for (uint32_t i = 0; i < this->SavedSteps; i++) {
     root["Pressure"][i] = StoredPressure[i];
-    root["MuExcess"][i] = StoredMuExcess[i];
     root["Energy"][i] = StoredEnergy[i];
     root["Virial"][i] = StoredVirial[i];
   }
 }
 
-template <uint32_t D> double LennardJones<D>::__TestAddParticle()
+template <uint32_t D> bool LennardJones<D>::__AddParticle()
 {
+  // Do not create new particles if the array is full.
+  if (this->ParticlesNumber == this->MaxParticlesNumber) return false;
   LJParticle<D> test_part;
 
   // Creates a particle inside the box.
   this->Random.RandomVector(this->SystemSize[0], this->SystemSize[1], test_part.X);
 
-  // Computes energy of the particle.
+  // Computes energy of the particle. TODO: check U(N+1)-U(N) = E+dE-E = test_part.Energy
   __ParticleEnergy(&test_part);
 
-  return test_part.Energy;
+  // Random probability compared to acc(N -> N + 1).
+  if (this->Random.RandomProb() < this->Volume / (this->ParticlesNumber + 1) * std::exp(this->Beta*(this->Mu + test_part.Energy))) {
+    // Update system's energy and virial.
+    Energy += test_part.Energy;
+    Virial += test_part.Virial;
+
+    // Put new particle in its rightful place.
+    *this->ParticleToAdd = test_part;
+
+    // Fill in the spot in the array.
+    this->RemovedParticles[this->ParticleToAdd - this->Particles] = true;
+
+    // If the array is being completely filled with this particle, just return true.
+    if (this->ParticlesNumber + 1 == this->MaxParticlesNumber) {
+      return true;
+    }
+
+    // Check if the next position of the array is free.
+    if (!this->RemovedParticles[this->ParticlesNumber + 1]) {
+      this->ParticleToAdd = this->Particles + this->ParticlesNumber + 1;
+      return true;
+    }
+
+    // Otherwise check everything.
+    for (uint32_t i = 0; i < this->MaxParticlesNumber; i++) {
+      if (!this->RemovedParticles[i]) {
+        this->ParticleToAdd = this->Particles + i;
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
-template <uint32_t D> double LennardJones<D>::__ComputeMuExcess()
+template <uint32_t D> bool LennardJones<D>::__RemoveParticle()
 {
-  double average = 0.0;
-  for (uint32_t i = 0; i < MuExcessTests; i++) {
-    average += std::exp(-this->Beta*__TestAddParticle());
+  // Do not remove any particle if the array is empty.
+  if (this->ParticlesNumber == 0) return false;
+
+  // Pick a particle.
+  uint32_t index = this->Random.RandomInt();
+  LJParticle<D> * test_part = nullptr;
+  for (uint32_t i = 0, c = 0; i < this->MaxParticlesNumber; i++) {
+    if (this->RemovedParticles[i]) {
+      if (c == index) {
+        test_part = this->Particles + i;
+        break;
+      }
+      c++;
+    }
+    assert(c < this->ParticlesNumber);
   }
-  //printf("mu_ex: %f\n", average);
-  return average > 0 ? -std::log(average/MuExcessTests)/this->Beta : MuExcess;
+
+  // Computes energy of the particle.
+  // TODO: check U(N-1)-U(N) = E-dE-E = -test_part.Energy
+  __ParticleEnergy(test_part);
+
+  // Random probability compared to acc(N -> N - 1).
+  if (this->Random.RandomProb() < this->ParticlesNumber / this->Volume * std::exp(-this->Beta*(this->Mu + test_part->Energy))) {
+    // Update system's energy and virial.
+    Energy -= test_part->Energy;
+    Virial -= test_part->Virial;
+
+    // Change the place of the next created particle.
+    this->ParticleToAdd = test_part;
+
+    // Free the spot in the array.
+    this->RemovedParticles[this->ParticleToAdd - this->Particles] = false;
+    return true;
+  }
+
+  return false;
 }
 
 template <uint32_t D> bool LennardJones<D>::__MoveParticle()
@@ -198,6 +248,5 @@ template <uint32_t D> bool LennardJones<D>::__MoveParticle()
 
 template <uint32_t D> void LennardJones<D>::__Measure()
 {
-  Pressure = this->Density  / this->Beta + Virial / 3.0 / this->Volume;
-  MuExcess = __ComputeMuExcess();
+  Pressure = this->Density / this->Beta + Virial / 3.0 / this->Volume;
 }

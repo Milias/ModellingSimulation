@@ -9,7 +9,7 @@ if sys.version_info < (3, 0):
 else:
   print("Warning: Python-Visual not found.")
 
-def PlotSphereEvolutionNVT(filename):
+def PlotSphereEvolutionMuVT(filename):
   try:
     f = open(filename,'r')
     data = json.loads(f.read())
@@ -37,13 +37,20 @@ def PlotSphereEvolutionNVT(filename):
     color=vs.color.red
   )
 
-  spheres = [vs.sphere(radius=data["ParticlesRadius"],pos=(data["Particles"][0][i][0], data["Particles"][0][i][1], data["Particles"][0][i][2])) for i in range(data["ParticlesNumber"])]
+  spheres = [vs.sphere(radius=data["ParticlesRadius"]) for i in range(data["MaxParticlesNumber"])]
+  for i in spheres:
+    i.visible = False
 
-  nt = 1
+  nt = 0
   while True:
     vs.rate(60)
-    for i in range(data["ParticlesNumber"]):
+    for i in range(data["MaxParticlesNumber"]):
+      spheres[i].visible = False
+
+    for i in range(data["ParticlesNumber"][nt]):
       spheres[i].pos = (data["Particles"][nt][i][0], data["Particles"][nt][i][1], data["Particles"][nt][i][2])
+      spheres[i].visible = True
+
     if nt + 1 >= data["SavedSteps"]:
       nt = 0
     else:
@@ -51,8 +58,8 @@ def PlotSphereEvolutionNVT(filename):
 
 def ParseInput(argv):
   if len(argv) > 1:
-    if argv[1] == "-nvt":
-      print(PlotSphereEvolutionNVT(argv[2]))
+    if argv[1] == "-muvt":
+      print(PlotSphereEvolutionMuVT(argv[2]))
     else:
       print("Wrong argument.")
 

@@ -7,32 +7,28 @@ spec.loader.exec_module(graphs)
 
 from numpy import *
 import matplotlib.pyplot as plt
-
+import json
 
 fig = plt.figure()
 
-start = 20
+start = 0
 kwargs = {"color":"red", "marker":"", "linestyle":"-"}
+key = "ParticlesNumber"
+
+filename = "data/evol/fcc-%d.json"
+ax = fig.add_subplot(1,1,1)
+for i in range(7):
+  data = json.loads(open(filename % i, "r").read())
+  x = arange(0, data["TotalSteps"] + 1, data["SaveSystemInterval"])
+  y = data[key][start:]
+  ax.plot(x, y, "-", marker=".", label=r"$\mu: %1.1f, \rho_0: %1.1f$" % (data["Mu"], data["Density"][0]))
+  del x, y, data
+
+ax.set_xlabel("Step")
+ax.set_ylabel(key)
+ax.legend(loc=0,numpoints=1)
 
 """
-filename ="data/1/evol-fcc-9.json"
-ax = fig.add_subplot(2,2,1)
-avg = graphs.PlotQuantityVsStep(filename, "Pressure", ax, start, kwargs)
-ax.set_title(r"Pressure - $\langle P \rangle = %.3f$" % avg)
-
-ax = fig.add_subplot(2,2,2)
-avg = graphs.PlotQuantityVsStep(filename, "MuExcess", ax, start, kwargs)
-ax.set_title(r"MuExcess - $\langle \mu_{ex} \rangle = %.3f$" % avg)
-
-ax = fig.add_subplot(2,2,3)
-avg = graphs.PlotQuantityVsStep(filename, "Energy", ax, start, kwargs)
-ax.set_title(r"Energy - $\langle E \rangle = %.3f$" % avg)
-
-ax = fig.add_subplot(2,2,4)
-avg = graphs.PlotQuantityVsStep(filename, "Virial", ax, start, kwargs)
-ax.set_title(r"Virial - $\langle V \rangle = %.3f$" % avg)
-"""
-#"""
 ax = fig.add_subplot(1,1,1)
 titles = {"Pressure": "Pressure", "MuExcess": r"$\mu$", "Virial": "Virial", "Energy": "Energy"}
 symbol = {"Pressure": "P", "MuExcess": r"\mu", "Virial": "V", "Energy": "E"}
@@ -63,5 +59,5 @@ plt.xlabel(r"Density / $\rho \sigma^3$")
 plt.ylabel(r"%s / $\langle %s \rangle$" % (titles[key2], symbol[key2]))
 plt.title("%s vs Density" % titles[key2])
 plt.savefig("report/graphs/mu_rho_b.pdf")
-#"""
+"""
 plt.show()

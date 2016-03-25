@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python python/config.py
-for i in `seq 0 1 24`
+for i in `seq 25 1 39`
 do
   for j in `seq 1 1 10`
   do
