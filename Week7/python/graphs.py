@@ -8,19 +8,52 @@ spec.loader.exec_module(graphs)
 from numpy import *
 import matplotlib.pyplot as plt
 import json
+import sys
 
 fig = plt.figure()
 
-start = 0
+start = 40
 kwargs = {"color":"red", "marker":"", "linestyle":"-"}
 key = "ParticlesNumber"
 
-filename = "data/evol/fcc-%d.json"
+filenames = sys.argv[1:]
+
+"""
+# Question 2.
+
+ax = fig.add_subplot(1,1,1)
+
+x = []
+y = []
+for n, f in enumerate(filenames):
+  try:
+    data = json.loads(open(f, "r").read())
+    x.append(average(data["Density"][start:]))
+    y.append(data["Mu"])
+    del data
+  except:
+    continue
+
+x = array(x)
+y = array(y)
+
+sorted_ind = argsort(x)
+
+x = x[sorted_ind]
+y = y[sorted_ind]
+
+ax.plot(x,y, "r-", marker="o")
+ax.set_xlabel(r"Density / $\rho\sigma^3$")
+ax.set_ylabel(r"Chemical potential / $\mu$")
+ax.set_title(r"$\mu$ vs Density - $\beta = 0.5$")
+plt.savefig("report/graphs/mu_rho.pdf")
+"""
+
 """
 ax = fig.add_subplot(1,1,1)
-for i in range(6):
+for f in filenames:
   try:
-    data = json.loads(open(filename % i, "r").read())
+    data = json.loads(open(f, "r").read())
     x = arange(0, data["TotalSteps"] + 1, data["SaveSystemInterval"])[start:]
     y = data[key][start:]
     ax.plot(x, y, "-", marker=".", label=r"$\mu: %1.1f, \rho_0: %1.1f$" % (data["Mu"], data["Density"][0]))
@@ -30,20 +63,23 @@ for i in range(6):
 
 ax.set_xlabel("Step")
 ax.set_ylabel(key)
+ax.legend(loc=0,numpoints=1)
 """
+
 #"""
-for n, i in enumerate(range(6)):
-  ax = fig.add_subplot(3,2,n+1)
+for n, f in enumerate(filenames):
+  ax = fig.add_subplot(5,2,n+1)
   try:
-    data = json.loads(open(filename % i, "r").read())
-    hist, x = histogram(data[key][start:], bins=100, normed=False)
+    data = json.loads(open(f, "r").read())
+    b = amax(data["ParticlesNumber"][start:])-amin(data["ParticlesNumber"][start:])
+    hist, x = histogram(data[key][start:], bins=b, normed=False)
     ax.bar(x[:-1], hist, width=(x[1]-x[0]))
-    ax.set_title(r"$\mu: %1.1f, \rho_0: %1.1f$" % (data["Mu"], data["Density"][0]))
+    ax.set_title(r"$\mu: %1.3f, T^*: %1.3f$" % (data["Mu"], 1.0/data["Beta"]))
     del hist, x, data
   except Exception as e:
     ax.set_title(str(e))
 #"""
-ax.legend(loc=0,numpoints=1)
+
 """
 ax = fig.add_subplot(1,1,1)
 titles = {"Pressure": "Pressure", "MuExcess": r"$\mu$", "Virial": "Virial", "Energy": "Energy"}
@@ -74,6 +110,7 @@ plt.legend(loc=0,numpoints=1)
 plt.xlabel(r"Density / $\rho \sigma^3$")
 plt.ylabel(r"%s / $\langle %s \rangle$" % (titles[key2], symbol[key2]))
 plt.title("%s vs Density" % titles[key2])
+ax.legend(loc=0,numpoints=1)
 plt.savefig("report/graphs/mu_rho_b.pdf")
 """
 plt.show()

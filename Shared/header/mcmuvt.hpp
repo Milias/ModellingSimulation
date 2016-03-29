@@ -228,7 +228,7 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
   CurrentStep = 0;
   __UpdateJsonOutput(Progress, part_counter);
 
-  uint32_t step = 0, print_steps = std::min(uint32_t(100),TotalSteps/100+1);
+  uint32_t step = 0, print_steps = std::min(uint32_t(1000),TotalSteps/10000+1);
   for (uint32_t i = 0; i < TotalSteps; i++) {
     CurrentStep = i;
 
