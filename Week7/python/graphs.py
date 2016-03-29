@@ -16,18 +16,34 @@ kwargs = {"color":"red", "marker":"", "linestyle":"-"}
 key = "ParticlesNumber"
 
 filename = "data/evol/fcc-%d.json"
+"""
 ax = fig.add_subplot(1,1,1)
-for i in range(7):
-  data = json.loads(open(filename % i, "r").read())
-  x = arange(0, data["TotalSteps"] + 1, data["SaveSystemInterval"])
-  y = data[key][start:]
-  ax.plot(x, y, "-", marker=".", label=r"$\mu: %1.1f, \rho_0: %1.1f$" % (data["Mu"], data["Density"][0]))
-  del x, y, data
+for i in range(6):
+  try:
+    data = json.loads(open(filename % i, "r").read())
+    x = arange(0, data["TotalSteps"] + 1, data["SaveSystemInterval"])[start:]
+    y = data[key][start:]
+    ax.plot(x, y, "-", marker=".", label=r"$\mu: %1.1f, \rho_0: %1.1f$" % (data["Mu"], data["Density"][0]))
+    del x, y, data
+  except Exception as e:
+    print(e)
 
 ax.set_xlabel("Step")
 ax.set_ylabel(key)
+"""
+#"""
+for n, i in enumerate(range(6)):
+  ax = fig.add_subplot(3,2,n+1)
+  try:
+    data = json.loads(open(filename % i, "r").read())
+    hist, x = histogram(data[key][start:], bins=100, normed=False)
+    ax.bar(x[:-1], hist, width=(x[1]-x[0]))
+    ax.set_title(r"$\mu: %1.1f, \rho_0: %1.1f$" % (data["Mu"], data["Density"][0]))
+    del hist, x, data
+  except Exception as e:
+    ax.set_title(str(e))
+#"""
 ax.legend(loc=0,numpoints=1)
-
 """
 ax = fig.add_subplot(1,1,1)
 titles = {"Pressure": "Pressure", "MuExcess": r"$\mu$", "Virial": "Virial", "Energy": "Energy"}

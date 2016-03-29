@@ -90,7 +90,7 @@ def GenerateFCC(N, part_radius, scale, filename):
   return "Saved to %s successfully." %  filename
 
 nf = 0
-X = linspace(0.5, 3.0, 10)
+X = linspace(0.7, 1.2, 20)
 for spc in X:
-  GenerateFCC([4]*3, 1.0, spc, "data/lattice/fcc-%d.json" % nf)
+  GenerateFCC([4]*3, 0.5, spc, "data/lattice/fcc-%d.json" % nf)
   nf+=1

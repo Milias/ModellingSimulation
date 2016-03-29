@@ -148,7 +148,7 @@ template <uint32_t D> bool LennardJones<D>::__AddParticle()
   __ParticleEnergy(&test_part);
 
   // Random probability compared to acc(N -> N + 1).
-  if (this->Random.RandomProb() < this->Volume / (this->ParticlesNumber + 1) * std::exp(this->Beta*(this->Mu + test_part.Energy))) {
+  if (this->Random.RandomProb() < this->Volume / (this->ParticlesNumber + 1) * std::exp(this->Beta*(this->Mu - test_part.Energy))) {
     // Update system's energy and virial.
     Energy += test_part.Energy;
     Virial += test_part.Virial;
@@ -205,7 +205,7 @@ template <uint32_t D> bool LennardJones<D>::__RemoveParticle()
   __ParticleEnergy(test_part);
 
   // Random probability compared to acc(N -> N - 1).
-  if (this->Random.RandomProb() < this->ParticlesNumber / this->Volume * std::exp(-this->Beta*(this->Mu + test_part->Energy))) {
+  if (this->Random.RandomProb() < this->ParticlesNumber / this->Volume * std::exp(-this->Beta*(this->Mu - test_part->Energy))) {
     // Update system's energy and virial.
     Energy -= test_part->Energy;
     Virial -= test_part->Virial;
