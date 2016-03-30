@@ -1,7 +1,6 @@
 #pragma once
 #include "shared.h"
 #include "vector.hpp"
-#include "part.hpp"
 
 template <uint32_t D, class Particle> class MonteCarloSimulatorMuVT
 {
@@ -225,7 +224,6 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
 
   Json::Value Progress;
   Json::FastWriter writer;
-  CurrentStep = 0;
   __UpdateJsonOutput(Progress, part_counter);
 
   uint32_t step = 0, print_steps = std::min(uint32_t(1000),TotalSteps/10000+1);

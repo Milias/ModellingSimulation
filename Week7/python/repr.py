@@ -43,7 +43,7 @@ def PlotSphereEvolutionMuVT(filename):
 
   nt = 0
   while True:
-    vs.rate(60)
+    vs.rate(20)
     for i in range(data["MaxParticlesNumber"]):
       spheres[i].visible = False
 

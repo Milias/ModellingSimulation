@@ -1,5 +1,6 @@
 #pragma once
 #include "mcnvt.hpp"
+#include "part.hpp"
 
 double LJPotential(double r, double cut, double e_cut) {
   if (r > cut) {

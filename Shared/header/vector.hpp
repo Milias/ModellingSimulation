@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 
 template <uint32_t N, typename T> struct GenericVector
 {

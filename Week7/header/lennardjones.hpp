@@ -1,43 +1,6 @@
 #pragma once
+#include "shared.h"
 #include "mcmuvt.hpp"
-
-double LJPotential(double r, double cut, double e_cut) {
-  if (r > cut) {
-    return 0.0;
-  } else {
-    double r6 = 1.0 / (r * r * r);
-    return 4.0 * (r6 * (r6 - 1.0)) - e_cut;
-  }
-}
-
-double LJVirial(double r, double cut) {
-  if (r > cut) {
-    return 0.0;
-  } else {
-    double r6 = 1.0 / (r * r * r);
-    return 24.0 * r6 * (2.0 * r6 - 1.0);
-  }
-}
-
-template <uint32_t D> struct LJParticle : GenericParticle<D>
-{
-  double Energy = 0.0, Virial = 0.0;
-
-  LJParticle() {}
-  LJParticle(const LJParticle & p) : Energy(p.Energy), Virial(p.Virial) {
-    this->X = p.X;
-  }
-  LJParticle(const LJParticle * p) : Energy(p->Energy), Virial(p->Virial) {
-    this->X = p->X;
-  }
-
-  LJParticle & operator=(const LJParticle & p) {
-    this->X = p.X;
-    Energy = p.Energy;
-    Virial = p.Virial;
-    return *this;
-  }
-};
 
 template <uint32_t D> class LennardJones : public MonteCarloSimulatorMuVT<D, LJParticle<D>>
 {
@@ -78,6 +41,7 @@ template <uint32_t D> LennardJones<D>::~LennardJones()
 template <uint32_t D> void LennardJones<D>::__PostInitialize(Json::Value & root)
 {
   RCut = root["RCut"].asDouble();
+  ECut = 4.0 * ( std::pow(1.0 / RCut, 12) - std::pow(1.0 / RCut, 6) );
 
   if (StoredPressure) delete[] StoredPressure;
   if (StoredEnergy) delete[] StoredEnergy;
@@ -111,8 +75,6 @@ template <uint32_t D> void LennardJones<D>::__PostSaveSystem(uint32_t step)
 
 template <uint32_t D> void LennardJones<D>::__PostLoadParticles(Json::Value & root)
 {
-  ECut = 4.0 * ( std::pow(1.0 / RCut, 12) - std::pow(1.0 / RCut, 6) );
-
   Energy = 0.0;
   Virial = 0.0;
   for (uint32_t i = 0; i < this->ParticlesNumber; i++) {

@@ -12,7 +12,7 @@ import sys
 
 fig = plt.figure()
 
-start = 40
+start = 0
 kwargs = {"color":"red", "marker":"", "linestyle":"-"}
 key = "ParticlesNumber"
 
@@ -68,11 +68,12 @@ ax.legend(loc=0,numpoints=1)
 
 #"""
 for n, f in enumerate(filenames):
-  ax = fig.add_subplot(5,2,n+1)
+  ax = fig.add_subplot(1,1,n+1)
   try:
     data = json.loads(open(f, "r").read())
     b = amax(data["ParticlesNumber"][start:])-amin(data["ParticlesNumber"][start:])
     hist, x = histogram(data[key][start:], bins=b, normed=False)
+    x = x / data["Volume"]
     ax.bar(x[:-1], hist, width=(x[1]-x[0]))
     ax.set_title(r"$\mu: %1.3f, T^*: %1.3f$" % (data["Mu"], 1.0/data["Beta"]))
     del hist, x, data

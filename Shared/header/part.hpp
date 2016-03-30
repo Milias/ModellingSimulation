@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include "vector.hpp"
 
 template <uint32_t D> struct GenericParticle

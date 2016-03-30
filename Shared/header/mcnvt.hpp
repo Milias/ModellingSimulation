@@ -1,12 +1,12 @@
 #pragma once
 #include "shared.h"
 #include "vector.hpp"
-#include "part.hpp"
 
 template <uint32_t D, class Particle> class MonteCarloSimulatorNVT
 {
 protected:
   uint32_t
+    CurrentStep = 0,
     ParticlesNumber = 0,
     ParticleMoves = 0,
     TotalSteps = 0,
@@ -37,15 +37,17 @@ protected:
   double __ComputeDistance2(const Vector<D> & p1, const Vector<D> & p2);
   double __ComputeDistance(const Vector<D> & p1, const Vector<D> & p2);
   void __ComputeSystemSize();
+
   void __SaveSystem(uint32_t step);
   virtual void __PostSaveSystem(uint32_t step) {}
+  virtual void __PostLoadParticles(Json::Value & root) {}
+  virtual void __PostSaveParticles(Json::Value & root) {}
+
 
   virtual bool __MoveParticle();
   virtual void __Measure() {}
 
-  virtual void __UpdateJsonOutput(Json::Value & root, uint32_t step, StepSizeAdapter & part);
-  virtual void __PostLoadParticles(Json::Value & root) {}
-  virtual void __PostSaveParticles(Json::Value & root) {}
+  virtual void __UpdateJsonOutput(Json::Value & root, StepSizeAdapter & part);
 
 public:
   MonteCarloSimulatorNVT() {}
@@ -151,9 +153,9 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::
   __PostSaveSystem(step);
 }
 
-template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::__UpdateJsonOutput(Json::Value & root, uint32_t step, StepSizeAdapter & part)
+template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::__UpdateJsonOutput(Json::Value & root, StepSizeAdapter & part)
 {
-  root["CurrentStep"] = step;
+  root["CurrentStep"] = CurrentStep;
   root["TotalSteps"] = TotalSteps;
   root["PartRate"] = part.rate;
   root["PartCount"] = part.count;
@@ -253,10 +255,12 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::
 
   Json::Value Progress;
   Json::FastWriter writer;
-  __UpdateJsonOutput(Progress, 0, part_counter);
+  __UpdateJsonOutput(Progress, part_counter);
 
   uint32_t step = 0, print_steps = std::min(uint32_t(100),TotalSteps/100+1);
   for (uint32_t i = 0; i < TotalSteps; i++) {
+    CurrentStep = i;
+
     // Save spheres.
     if (SaveSystemInterval > 0 && i % SaveSystemInterval == 0) {
       __Measure();
@@ -265,7 +269,7 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::
     }
 
     if (i % print_steps == 0) {
-      __UpdateJsonOutput(Progress, i, part_counter);
+      __UpdateJsonOutput(Progress, part_counter);
       std::cout << writer.write(Progress);
     }
 
@@ -279,7 +283,8 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorNVT<D, Particle>::
     __SaveSystem(step);
     SavedSteps = step+1;
   }
-  __UpdateJsonOutput(Progress, TotalSteps, part_counter);
+  CurrentStep = TotalSteps;
+  __UpdateJsonOutput(Progress, part_counter);
   std::cout << writer.write(Progress);
 }
 

@@ -91,3 +91,4 @@ def GenerateFCC(N, part_radius, scale, filename):
 
 nf = 0
 GenerateFCC([4]*3, 0.5, 1.47, "data/lattice/fcc-bb.json")
+#GenerateFCC([4]*3, 0.5, 5.0, "data/lattice/fcc-low.json")
