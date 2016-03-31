@@ -90,5 +90,5 @@ def GenerateFCC(N, part_radius, scale, filename):
   f.close()
   return "Saved to %s successfully." %  filename
 
-GenerateFCC([4]*3, 0.5, 1.47, "data/lattice/fcc-bb.json")
-#GenerateFCC([1]*3, 0.5, 1.47*7, "data/lattice/fcc-ultralow.json")
+#GenerateFCC([4]*3, 0.5, 1.47, "data/lattice/fcc-bb.json")
+GenerateFCC([1]*3, 0.5, 1.47*7, "data/lattice/fcc-ultralow.json")

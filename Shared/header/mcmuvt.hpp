@@ -24,9 +24,6 @@ protected:
     * StoredStepSize = nullptr,
     * StoredDensity = nullptr;
 
-  // true: filled particle, false: freed particle.
-  bool * RemovedParticles = nullptr;
-
   Particle
     * Particles = nullptr,
     ** StoredParticles = nullptr,
@@ -69,7 +66,6 @@ public:
 template <uint32_t D, class Particle> MonteCarloSimulatorMuVT<D, Particle>::~MonteCarloSimulatorMuVT()
 {
   if (Particles) delete[] Particles;
-  if (RemovedParticles) delete[] RemovedParticles;
   if (SystemSize) delete[] SystemSize;
   if (StoredStepSize) { delete[] StoredStepSize; }
   if (StoredParticlesNumber) { delete[] StoredParticlesNumber; }
@@ -101,11 +97,9 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
   StoredDensity[step] = Density;
 
   StoredParticles[step] = new Particle[ParticlesNumber];
-  for (uint32_t i = 0, count = 0; i < MaxParticlesNumber; i++) {
-    if (RemovedParticles[i]) {
-      StoredParticles[step][count] = Particles[i];
-      count++;
-    }
+  for (uint32_t i = 0, count = 0; i < ParticlesNumber; i++) {
+    StoredParticles[step][count] = Particles[i];
+    count++;
   }
 
   __PostSaveSystem(step);
@@ -133,9 +127,6 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
   Beta = Root["Beta"].asDouble();
   Mu = Root["Mu"].asDouble();
   MaxParticlesNumber = Root["MaxParticlesNumber"].asUInt();
-
-  if (RemovedParticles) delete[] RemovedParticles;
-  RemovedParticles = new bool[MaxParticlesNumber];
 
   TotalSteps = Root["TotalSteps"].asUInt();
   SaveSystemInterval = Root["SaveSystemInterval"].asUInt();
@@ -166,10 +157,6 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
   if (Particles) delete[] Particles;
   Particles = new Particle[MaxParticlesNumber];
   ParticleToAdd = Particles + ParticlesNumber;
-
-  for (uint32_t i = 0; i < MaxParticlesNumber; i++) {
-    RemovedParticles[i] = i < ParticlesNumber ? true : false;
-  }
 
   if (SystemSize) delete[] SystemSize;
   SystemSize = new Vector<D>[2];
@@ -247,7 +234,7 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
       StepSize = part_counter.Update(__MoveParticle());
     }
 
-    if (Random.RandomProb() > 0.5) {
+    if (Random.RandomProb() < 0.5) {
       if (__AddParticle()) {
         ParticlesNumber++;
         Random.SetRange(0, ParticlesNumber - 1);

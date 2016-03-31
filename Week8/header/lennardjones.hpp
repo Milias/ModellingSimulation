@@ -77,7 +77,6 @@ template <uint32_t D> void LennardJones<D>::__PostLoadParticles(Json::Value & ro
 {
   Energy = 0.0;
   Virial = 0.0;
-
   for (uint32_t i = 0; i < this->ParticlesNumber; i++) {
     __ParticleEnergy(this->Particles + i);
     Energy += this->Particles[i].Energy;
@@ -102,22 +101,44 @@ template <uint32_t D> bool LennardJones<D>::__AddParticle()
 {
   // Do not create new particles if the array is full.
   if (this->ParticlesNumber == this->MaxParticlesNumber) return false;
+  LJParticle<D> test_part;
 
   // Creates a particle inside the box.
-  this->Random.RandomVector(this->SystemSize[0], this->SystemSize[1], this->ParticleToAdd->X);
+  this->Random.RandomVector(this->SystemSize[0], this->SystemSize[1], test_part.X);
 
   // Computes energy of the particle. TODO: check U(N+1)-U(N) = E+dE-E = test_part.Energy
-  __ParticleEnergy(this->ParticleToAdd);
+  __ParticleEnergy(&test_part);
 
   // Random probability compared to acc(N -> N + 1).
-  if (this->Random.RandomProb() < this->Volume / (this->ParticlesNumber + 1) * std::exp(this->Beta*(this->Mu - this->ParticleToAdd->Energy))) {
+  if (this->Random.RandomProb() < this->Volume / (this->ParticlesNumber + 1) * std::exp(this->Beta*(this->Mu - test_part.Energy))) {
     // Update system's energy and virial.
-    Energy += this->ParticleToAdd->Energy;
-    Virial += this->ParticleToAdd->Virial;
+    Energy += test_part.Energy;
+    Virial += test_part.Virial;
 
-    this->ParticleToAdd = this->Particles + this->ParticlesNumber + 1;
+    // Put new particle in its rightful place.
+    *this->ParticleToAdd = test_part;
 
-    return true;
+    // Fill in the spot in the array.
+    this->RemovedParticles[this->ParticleToAdd - this->Particles] = true;
+
+    // If the array is being completely filled with this particle, just return true.
+    if (this->ParticlesNumber + 1 == this->MaxParticlesNumber) {
+      return true;
+    }
+
+    // Check if the next position of the array is free.
+    if (!this->RemovedParticles[this->ParticlesNumber + 1]) {
+      this->ParticleToAdd = this->Particles + this->ParticlesNumber + 1;
+      return true;
+    }
+
+    // Otherwise check everything.
+    for (uint32_t i = 0; i < this->MaxParticlesNumber; i++) {
+      if (!this->RemovedParticles[i]) {
+        this->ParticleToAdd = this->Particles + i;
+        return true;
+      }
+    }
   }
   return false;
 }
@@ -129,7 +150,17 @@ template <uint32_t D> bool LennardJones<D>::__RemoveParticle()
 
   // Pick a particle.
   uint32_t index = this->Random.RandomInt();
-  LJParticle<D> * test_part = this->Particles + index;
+  LJParticle<D> * test_part = nullptr;
+  for (uint32_t i = 0, c = 0; i < this->MaxParticlesNumber; i++) {
+    if (this->RemovedParticles[i]) {
+      if (c == index) {
+        test_part = this->Particles + i;
+        break;
+      }
+      c++;
+    }
+    assert(c < this->ParticlesNumber);
+  }
 
   // Computes energy of the particle.
   // TODO: check U(N-1)-U(N) = E-dE-E = -test_part.Energy
@@ -141,11 +172,11 @@ template <uint32_t D> bool LennardJones<D>::__RemoveParticle()
     Energy -= test_part->Energy;
     Virial -= test_part->Virial;
 
-    this->Particles[index] = this->Particles[this->ParticlesNumber - 1];
-
     // Change the place of the next created particle.
-    this->ParticleToAdd = this->Particles + this->ParticlesNumber - 1;
+    this->ParticleToAdd = test_part;
 
+    // Free the spot in the array.
+    this->RemovedParticles[this->ParticleToAdd - this->Particles] = false;
     return true;
   }
 
