@@ -226,7 +226,7 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
   Json::FastWriter writer;
   __UpdateJsonOutput(Progress, part_counter);
 
-  uint32_t step = 0, print_steps = std::min(uint32_t(1000),TotalSteps/10000+1);
+  uint32_t step = 0, print_steps = std::max(uint32_t(10000),TotalSteps/10000+1);
   for (uint32_t i = 0; i < TotalSteps; i++) {
     CurrentStep = i;
 

@@ -12,44 +12,77 @@ import sys
 
 fig = plt.figure()
 
-start = 0
+start = 1000
 kwargs = {"color":"red", "marker":"", "linestyle":"-"}
-key = "ParticlesNumber"
 
 filenames = sys.argv[1:]
 
-"""
+#"""
 # Question 2.
 
 ax = fig.add_subplot(1,1,1)
 
-x = []
-y = []
+x = [[], [], []]
+y = [[], [], []]
 for n, f in enumerate(filenames):
   try:
     data = json.loads(open(f, "r").read())
-    x.append(average(data["Density"][start:]))
-    y.append(data["Mu"])
+    if abs(1/data["Beta"]-2.0)<1e-5:
+      y[0].append(data["Mu"])
+      x[0].append(average(data["Density"][start:]))
+    elif abs(1/data["Beta"]-1.0)<1e-5:
+      y[1].append(data["Mu"])
+      x[1].append(average(data["Density"][start:]))
+    elif abs(1/data["Beta"]-0.5)<1e-5:
+      y[2].append(data["Mu"])
+      x[2].append(average(data["Density"][start:]))
     del data
-  except:
-    continue
+    print("%d, %d, %d" % (len(y[0]), len(y[1]), len(y[2])))
+  except Exception as e:
+    print(e)
+
+data = json.loads(open("data/state.json", "r").read())
+
+y2 = array(data["y"])
+x2 = array(data["x"])
+
+kwargs = [
+  {"color":"b", "marker":"o", "linestyle":"-", "label":r"$k_B T / \epsilon = 2.0$"},
+  {"color":"r", "marker":"o", "linestyle":"-", "label":r"$k_B T / \epsilon = 1.0$"},
+  {"color":"m", "marker":"o", "linestyle":"-", "label":r"$k_B T / \epsilon = 0.5$"}]
+
+kwargs2 = [
+  {"color":"r", "marker":"^", "linestyle":"--"},
+  {"color":"m", "marker":"^", "linestyle":"--"},
+  {"color":"b", "marker":"^", "linestyle":"--"}]
+
+xmax = 0.7
+for i in [0, 2]:
+  ax.plot(x2[x2<xmax], y2[i][x2<xmax],**kwargs2[i])
 
 x = array(x)
 y = array(y)
 
-sorted_ind = argsort(x)
+sorted_ind = argsort(x,axis=1)
 
-x = x[sorted_ind]
-y = y[sorted_ind]
+x = array([x[i][sorted_ind[i]] for i in range(x.shape[0])])
+y = array([y[i][sorted_ind[i]] for i in range(y.shape[0])])
 
-ax.plot(x,y, "r-", marker="o")
+for i in range(2):
+  print("size: %d, %d" % (x[i][x[i]<xmax].size, y[i][x[i]<xmax].size))
+  ax.plot(x[i][x[i]<xmax], y[i][x[i]<xmax], **kwargs[i])
+
 ax.set_xlabel(r"Density / $\rho\sigma^3$")
 ax.set_ylabel(r"Chemical potential / $\mu$")
-ax.set_title(r"$\mu$ vs Density - $\beta = 0.5$")
+ax.set_title(r"$\mu$ vs Density")
+plt.axis([0, xmax, -6, 8])
+plt.legend(loc=0, numpoints=1)
+plt.savefig("report/graphs/mu_rho.png")
 plt.savefig("report/graphs/mu_rho.pdf")
-"""
+#"""
 
 """
+key = "ParticlesNumber"
 ax = fig.add_subplot(1,1,1)
 for f in filenames:
   try:
@@ -66,20 +99,28 @@ ax.set_ylabel(key)
 ax.legend(loc=0,numpoints=1)
 """
 
-#"""
+"""
+#Question 3
+key = "ParticlesNumber"
 for n, f in enumerate(filenames):
-  ax = fig.add_subplot(1,1,n+1)
+  ax = fig.add_subplot(1,1,1)
+  print("\r%d" % n, end="")
   try:
     data = json.loads(open(f, "r").read())
     b = amax(data["ParticlesNumber"][start:])-amin(data["ParticlesNumber"][start:])
     hist, x = histogram(data[key][start:], bins=b, normed=False)
     x = x / data["Volume"]
+    plt.axis([0,1.2,0,amax(hist)])
     ax.bar(x[:-1], hist, width=(x[1]-x[0]))
     ax.set_title(r"$\mu: %1.3f, T^*: %1.3f$" % (data["Mu"], 1.0/data["Beta"]))
+    plt.savefig("report/graphs/hists/hist_%1.3f_%1.3f.png" % (data["Mu"], 1.0/data["Beta"]))
+    plt.clf()
     del hist, x, data
   except Exception as e:
     ax.set_title(str(e))
-#"""
+
+print("")
+"""
 
 """
 ax = fig.add_subplot(1,1,1)
@@ -114,4 +155,4 @@ plt.title("%s vs Density" % titles[key2])
 ax.legend(loc=0,numpoints=1)
 plt.savefig("report/graphs/mu_rho_b.pdf")
 """
-plt.show()
+#plt.show()

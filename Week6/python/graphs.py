@@ -7,7 +7,7 @@ spec.loader.exec_module(graphs)
 
 from numpy import *
 import matplotlib.pyplot as plt
-
+import json
 
 fig = plt.figure()
 
