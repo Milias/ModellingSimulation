@@ -17,7 +17,7 @@ kwargs = {"color":"red", "marker":"", "linestyle":"-"}
 
 filenames = sys.argv[1:]
 
-#"""
+"""
 # Question 2.
 
 ax = fig.add_subplot(1,1,1)
@@ -79,7 +79,7 @@ plt.axis([0, xmax, -6, 8])
 plt.legend(loc=0, numpoints=1)
 plt.savefig("report/graphs/mu_rho.png")
 plt.savefig("report/graphs/mu_rho.pdf")
-#"""
+"""
 
 """
 key = "ParticlesNumber"
@@ -99,7 +99,7 @@ ax.set_ylabel(key)
 ax.legend(loc=0,numpoints=1)
 """
 
-"""
+#"""
 #Question 3
 key = "ParticlesNumber"
 for n, f in enumerate(filenames):
@@ -120,7 +120,7 @@ for n, f in enumerate(filenames):
     ax.set_title(str(e))
 
 print("")
-"""
+#"""
 
 """
 ax = fig.add_subplot(1,1,1)
