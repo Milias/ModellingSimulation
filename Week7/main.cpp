@@ -12,10 +12,10 @@ int main(int argc, char ** argv)
       lds.UpdateParticles();
       lds.SaveParticles(argv[4]);
     } else if (strcmp(argv[1], "-nvt") == 0 && argc == 5) {
-      lds.InitializeFromFile(argv[2]);
-      lds.LoadParticles(argv[3]);
-      lds.UpdateParticles();
-      lds.SaveParticles(argv[4]);
+      lq.InitializeFromFile(argv[2]);
+      lq.LoadParticles(argv[3]);
+      lq.UpdateParticles();
+      lq.SaveParticles(argv[4]);
     } else {
       std::cout << "Error: wrong arguments.\n";
     }

@@ -14,7 +14,8 @@ for conf in data/config/*.json
 do
   for latt in data/lattice/*.json
   do
-    ./bin/week7 -muvt $conf $latt data/evol/fcc-$nf.json &
+    #./bin/week7 -muvt $conf $latt data/evol/fcc-$nf.json &
+    ./bin/week7 -nvt $conf $latt data/evol/fcc-$nf.json &
     let nf=$nf+1
     while [ $(ps -ef | grep -v grep | grep week7 | wc -l) -gt $proc ]
     do

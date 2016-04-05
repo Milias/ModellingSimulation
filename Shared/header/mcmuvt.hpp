@@ -96,11 +96,12 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
   StoredParticlesNumber[step] = ParticlesNumber;
   StoredDensity[step] = Density;
 
+  /*
   StoredParticles[step] = new Particle[ParticlesNumber];
-  for (uint32_t i = 0, count = 0; i < ParticlesNumber; i++) {
-    StoredParticles[step][count] = Particles[i];
-    count++;
+  for (uint32_t i = 0; i < ParticlesNumber; i++) {
+    StoredParticles[step][i] = Particles[i];
   }
+  */
 
   __PostSaveSystem(step);
 }
@@ -282,7 +283,7 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
     Root["ParticlesNumber"][i] = StoredParticlesNumber[i];
     Root["Density"][i] = StoredDensity[i];
   }
-
+  /*
   for (uint32_t i = 0; i < SavedSteps; i++) {
     for (uint32_t j = 0; j < StoredParticlesNumber[i]; j++) {
       for (uint32_t k = 0; k < D; k++) {
@@ -290,6 +291,7 @@ template <uint32_t D, class Particle> void MonteCarloSimulatorMuVT<D, Particle>:
       }
     }
   }
+  */
 
   __PostSaveParticles(Root);
 

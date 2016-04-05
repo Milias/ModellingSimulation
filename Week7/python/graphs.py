@@ -12,8 +12,7 @@ import sys
 
 fig = plt.figure()
 
-start = 1000
-kwargs = {"color":"red", "marker":"", "linestyle":"-"}
+start = 100
 
 filenames = sys.argv[1:]
 
@@ -83,6 +82,7 @@ plt.axis([0, xmax, -7, 7])
 plt.legend(loc=0, numpoints=1)
 plt.savefig("report/graphs/mu_rho_low.png")
 plt.savefig("report/graphs/mu_rho_low.pdf")
+plt.clf()
 """
 
 """
@@ -103,28 +103,29 @@ ax.set_ylabel(key)
 ax.legend(loc=0,numpoints=1)
 """
 
-#"""
+"""
 # Question 3
 key = "ParticlesNumber"
 for n, f in enumerate(filenames):
   ax = fig.add_subplot(1,1,1)
-  print("\r%d" % n, end="")
+  print("\r%d" % (n+1), end="")
   try:
     data = json.loads(open(f, "r").read())
     b = amax(data["ParticlesNumber"][start:])-amin(data["ParticlesNumber"][start:])
     hist, x = histogram(data[key][start:], bins=b, normed=False)
     x = x / data["Volume"]
-    plt.axis([0,1.2,0,amax(hist)])
+    plt.axis([0,amax(x),0,amax(hist)])
     ax.bar(x[:-1], hist, width=(x[1]-x[0]))
     ax.set_title(r"$\mu: %1.3f, T^*: %1.3f$" % (data["Mu"], 1.0/data["Beta"]))
-    plt.savefig("report/graphs/hists/hist_%1.3f_%1.3f.png" % (data["Mu"], 1.0/data["Beta"]))
+    #plt.savefig("report/graphs/hists/hist_%1.5f_%1.5f.png" % (data["Mu"], 1.0/data["Beta"]))
+    plt.savefig("report/graphs/hists-close/hist_%1.5f_%1.5f.pdf" % (data["Mu"], 1.0/data["Beta"]))
     plt.clf()
     del hist, x, data
   except Exception as e:
     ax.set_title(str(e))
 
 print("")
-#"""
+"""
 
 """
 ax = fig.add_subplot(1,1,1)
@@ -159,4 +160,19 @@ plt.title("%s vs Density" % titles[key2])
 ax.legend(loc=0,numpoints=1)
 plt.savefig("report/graphs/mu_rho_b.pdf")
 """
-plt.show()
+
+#"""
+ax = fig.add_subplot(1,1,1)
+x = linspace(0.85, 0.95, 12)
+lp = array([0.11, 0.12, 0.13, 0.15, 0.16, 0.17, 0.18, 0.17, 0.20, 0.19, 0.20, 0.22])
+rp = array([0.59, 0.59, 0.55, 0.56, 0.53, 0.52, 0.47, 0.45, 0.43, 0.32, 0.27, 0.22])
+
+ax.plot(x,lp,**{"color":"r", "marker":"o", "linestyle":"-", "label":r"Left peak"})
+ax.plot(x,rp,**{"color":"b", "marker":"o", "linestyle":"-", "label":r"Right peak"})
+plt.legend(loc=0,numpoints=1)
+plt.xlabel(r"Temperature / $T^*$")
+plt.ylabel(r"Density / $\rho \sigma^3$")
+plt.title("$T^*$ vs Density")
+ax.legend(loc=0,numpoints=1)
+plt.savefig("report/graphs/d_peak_rho.pdf")
+#"""

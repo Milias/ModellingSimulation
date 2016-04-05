@@ -115,8 +115,9 @@ template <uint32_t D> bool LennardJones<D>::__AddParticle()
     Energy += this->ParticleToAdd->Energy;
     Virial += this->ParticleToAdd->Virial;
 
-    this->ParticleToAdd = this->Particles + this->ParticlesNumber + 1;
+    this->Particles[this->ParticlesNumber] = *this->ParticleToAdd;
 
+    this->ParticleToAdd = this->Particles + this->ParticlesNumber + 1;
     return true;
   }
   return false;
