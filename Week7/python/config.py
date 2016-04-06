@@ -22,7 +22,7 @@ def SaveInitFile(step_size, max_parts, beta, mu, r_cut, total_steps, save_interv
     return e
 
 nf = 0
-for mu in linspace(-2.52661, 0, 1):
-  for T in linspace(1.1, 0.95, 1):
-    SaveInitFile(0.1, 400, 1.0/T, mu, 2.5, 500000, 100, "data/config/config-%d.json" % nf)
+for mu in [-2.52661]:
+  for T in [2.0, 0.5]:
+    SaveInitFile(0.1, 400, 1.0/T, mu, 2.5, 5000, 10, "data/config/config-%d.json" % nf)
     nf+=1

@@ -43,7 +43,6 @@ protected:
   virtual void __PostLoadParticles(Json::Value & root) {}
   virtual void __PostSaveParticles(Json::Value & root) {}
 
-
   virtual bool __MoveParticle();
   virtual void __Measure() {}
 
@@ -53,7 +52,7 @@ public:
   MonteCarloSimulatorNVT() {}
   ~MonteCarloSimulatorNVT();
 
-  virtual void InitializeFromFile(char const * filename);
+  void InitializeFromFile(char const * filename);
 
   void UpdateParticles();
   void LoadParticles(char const * filename);

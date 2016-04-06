@@ -17,6 +17,8 @@ def PlotSphereEvolutionNVT(filename):
   except Exception as e:
     return str(e)
 
+  print(data["Beta"])
+
   center = (
     (data["SystemSize"][1][0]+data["SystemSize"][0][0])*0.5,
     (data["SystemSize"][1][1]+data["SystemSize"][0][1])*0.5,

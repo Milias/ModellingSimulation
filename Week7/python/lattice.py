@@ -87,6 +87,7 @@ def GenerateFCC(N, part_radius, scale, filename):
   print(data["SystemSize"])
   print(prod(array(data["SystemSize"][1])-array(data["SystemSize"][0])))
   print(data["ParticlesNumber"])
+  print(data["ParticlesNumber"]/prod(array(data["SystemSize"][1])-array(data["SystemSize"][0])))
 
   f.write(json.dumps(data))
   f.close()
@@ -94,4 +95,4 @@ def GenerateFCC(N, part_radius, scale, filename):
 
 #GenerateFCC([4]*3, 0.5, 1.47, "data/lattice/fcc-bb.json")
 #GenerateFCC([1]*3, 0.5, 1.47*6, "data/lattice/fcc-ultralow.json")
-GenerateFCC([6,6,1], 0.5, 2.3, "data/lattice/fcc-nvt.json")
+GenerateFCC([20,10,1], 0.5, 2.3, "data/lattice/fcc-nvt.json")
