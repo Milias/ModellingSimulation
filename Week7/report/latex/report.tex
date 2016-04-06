@@ -169,10 +169,12 @@ Plotting now these simulation's results in the $\rho - T^*$ plane we can see the
   \begin{center}
     \includegraphics[width=0.7\textwidth]{{../graphs/d_peak_rho}.pdf}
   \end{center}
-  \caption{Histogram showing same-height peaks.}
+  \caption{Plot of the density of each phase as a function of temperature.}
 \end{figure}
 
-Here we can see a more-or-less linear relation for $\rho(T^*)$, which if we consider that the right peak is not completely resolved because we start with a low density configuration, a linear behavior is well inside the error bars.
+Here we can see a more-or-less linear relation for $\rho(T^*)$, which if we consider that the right peak is not completely resolved because we start with a low density configuration, a linear behavior is well inside the error bars. Although, we would expect to find a power-law relation instead. It's possible to explain the functional dependence we find for the left peak by looking at the box size we are using, because for smaller boxes the number of particles will not change a lot, and thus for low densities any significant change of the number of particles would be a significant portion of the system, therefore making difficult to see any significant change in this function.
+
+On the other hand, for the right peak we don't have this limitation and thus the shape is closer to a power law as we were expecting. Even in this plot we are not represeting any error bars, the method used to compute this values (by hand) introduces quite large amounts of error, so we can expect not to find a particularly good approximation of the functional dependece for the right peak. This can be improved by using a high density initial configuration and focus in the right peak, instead of starting from a low density configuration for both.
 
 Finally, $h(N)$ can be physically interpreted as the distribution density function of the particle number in the system, and can be related to the free energy if we consider that this energy is related to the derivative of the chemical potential with respect to the number of particles.
 

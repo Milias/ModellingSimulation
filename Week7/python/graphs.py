@@ -172,7 +172,7 @@ ax.plot(x,rp,**{"color":"b", "marker":"o", "linestyle":"-", "label":r"Right peak
 plt.legend(loc=0,numpoints=1)
 plt.xlabel(r"Temperature / $T^*$")
 plt.ylabel(r"Density / $\rho \sigma^3$")
-plt.title("$T^*$ vs Density")
+plt.title("Density vs $T^*$")
 ax.legend(loc=0,numpoints=1)
 plt.savefig("report/graphs/d_peak_rho.pdf")
 #"""
