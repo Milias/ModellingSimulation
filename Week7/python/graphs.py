@@ -12,7 +12,7 @@ import sys
 
 fig = plt.figure()
 
-start = 100
+start = 0
 
 filenames = sys.argv[1:]
 
@@ -103,7 +103,7 @@ ax.set_ylabel(key)
 ax.legend(loc=0,numpoints=1)
 """
 
-"""
+#"""
 # Question 3
 key = "ParticlesNumber"
 for n, f in enumerate(filenames):
@@ -118,14 +118,14 @@ for n, f in enumerate(filenames):
     ax.bar(x[:-1], hist, width=(x[1]-x[0]))
     ax.set_title(r"$\mu: %1.3f, T^*: %1.3f$" % (data["Mu"], 1.0/data["Beta"]))
     #plt.savefig("report/graphs/hists/hist_%1.5f_%1.5f.png" % (data["Mu"], 1.0/data["Beta"]))
-    plt.savefig("report/graphs/hists-close/hist_%1.5f_%1.5f.pdf" % (data["Mu"], 1.0/data["Beta"]))
+    plt.savefig("report/graphs/hists/hist_%1.5f_%1.5f.pdf" % (data["Mu"], 1.0/data["Beta"]))
     plt.clf()
     del hist, x, data
   except Exception as e:
     ax.set_title(str(e))
 
 print("")
-"""
+#"""
 
 """
 ax = fig.add_subplot(1,1,1)
@@ -161,7 +161,7 @@ ax.legend(loc=0,numpoints=1)
 plt.savefig("report/graphs/mu_rho_b.pdf")
 """
 
-#"""
+"""
 ax = fig.add_subplot(1,1,1)
 x = linspace(0.85, 0.95, 12)
 lp = array([0.11, 0.12, 0.13, 0.15, 0.16, 0.17, 0.18, 0.17, 0.20, 0.19, 0.20, 0.22])
@@ -175,4 +175,4 @@ plt.ylabel(r"Density / $\rho \sigma^3$")
 plt.title("Density vs $T^*$")
 ax.legend(loc=0,numpoints=1)
 plt.savefig("report/graphs/d_peak_rho.pdf")
-#"""
+"""

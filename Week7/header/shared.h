@@ -2,7 +2,7 @@
 #include "part.hpp"
 
 double LJPotential(double r, double cut, double e_cut) {
-  if (r > cut) {
+  if (r > cut*cut) {
     return 0.0;
   } else {
     double r6 = 1.0 / (r * r * r);
@@ -11,7 +11,7 @@ double LJPotential(double r, double cut, double e_cut) {
 }
 
 double LJVirial(double r, double cut) {
-  if (r > cut) {
+  if (r > cut*cut) {
     return 0.0;
   } else {
     double r6 = 1.0 / (r * r * r);
