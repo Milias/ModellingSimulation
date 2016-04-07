@@ -6,7 +6,7 @@ import json
 from numpy import *
 import matplotlib.pyplot as plt
 
-theo_c = lambda eta, r: (r<1.0)*(-(1+2*eta)**2 + 6*eta*(1+0.5*eta)**2*r-0.5*eta*(1+2*eta)**2*r**3)/(1.0-eta)**4
+start = 1
 
 filenames = sys.argv[1:]
 data = [json.loads(open(f,"r").read()) for f in filenames]
@@ -17,30 +17,47 @@ k = [linspace(0,pi/d["DeltaR"],d["GridPoints"]) for d in data]
 c_r = [array(d["c_r"]) for d in data]
 g_r = [array(d["g_r"]) for d in data]
 s_k = [array(d["s_k"]) for d in data]
+c_t = [array(d["c_t"]) for d in data]
+g_t = [array(d["g_t"]) for d in data]
+s_t = [array(d["s_t"]) for d in data]
 
-plt.title(r"$c(r)$")
+c = ["r", "g", "b", "k", "m", "y", "r", "g", "b"]
+
+plt.title(r"$c(r)$ - Direct correlation function")
 for i, d in enumerate(data):
-  print(d["Density"]*pi/6.0)
-  y = theo_c(d["Density"]*pi/6.0, x[i])
-  plt.plot(x[i], y, "--")#, label=r"Theory: $\eta = %1.2f$" % d["Density"]*pi/6.0)
-  plt.plot(x[i], c_r[i], "-")#, label=r"Sim: $\eta = %1.2f$" % d["Density"]*pi/6.0)
+  plt.plot(x[i][start:], c_t[i][start:], c[i]+"-")
+  plt.plot(x[i][start::8], c_r[i][start::8], c[i]+".", label=r"$\eta = %1.2f$" % (d["Density"]*pi/6.0))
 
-plt.legend(loc=0)
-plt.savefig("report/graphs/ozsolver-c.png")
+plt.xlabel(r"Distance / $r/\sigma$")
+plt.ylabel(r"Direct correlation function / $c(r)$")
+plt.axis([0,1,-25,0])
+plt.legend(loc=0, numpoints=1)
+plt.savefig("report/graphs/ozsolver-c.pdf")
+#plt.show()
 plt.clf()
 
-plt.title(r"$g(r)$")
+plt.title(r"$g(r)$ - Pair correlation function")
 for i, d in enumerate(data):
-  plt.plot(x[i], g_r[i])#, label=r"$\eta = %1.2f$" % d["Density"]*pi/6.0)
+  plt.plot(x[i][start:], g_t[i][start:], c[i]+"-")
+  plt.plot(x[i][start::8], g_r[i][start::8], c[i]+".", label=r"$\eta = %1.2f$" % (d["Density"]*pi/6.0))
 
-plt.legend(loc=0)
-plt.savefig("report/graphs/ozsolver-g.png")
+plt.xlabel(r"Distance / $r/\sigma$")
+plt.ylabel(r"Pair correlation function / $g(r)$")
+plt.axis([0,3,0,3.5])
+plt.legend(loc=0, numpoints=1)
+plt.savefig("report/graphs/ozsolver-g.pdf")
+#plt.show()
 plt.clf()
 
-plt.title(r"$S(q)$")
+plt.title(r"$S(q)$ - Structure factor")
 for i, d in enumerate(data):
-  plt.plot(k[i], s_k[i])# , label=r"$\eta = %1.2f$" % d["Density"]*pi/6.0)
+  plt.plot(k[i][start:], s_t[i][start:], c[i]+"-")
+  plt.plot(k[i][start:], s_k[i][start:], c[i]+".", label=r"$\eta = %1.2f$" % (d["Density"]*pi/6.0))
 
-plt.legend(loc=0)
-plt.savefig("report/graphs/ozsolver-s.png")
+plt.xlabel(r"Momentum / $q\sigma$")
+plt.ylabel(r"Structure factor / $S(q)$")
+plt.axis([0,25,0,2.5])
+plt.legend(loc=0, numpoints=1)
+plt.savefig("report/graphs/ozsolver-s.pdf")
+#plt.show()
 plt.clf()

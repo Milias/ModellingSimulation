@@ -160,6 +160,9 @@ void four1(double *data,unsigned long nn,int isign)
 }
 #undef SWAP
 
+double c_theo(double eta, double r) {
+  return r<1.0 ? (-std::pow(1+2*eta,2) + 6*eta*std::pow(1+0.5*eta,2)*r-0.5*eta*std::pow(1+2*eta,2)*std::pow(r,3))/std::pow(1.0-eta,4) : 0.0;
+}
 
 class OZSolverHardSpheres
 {
@@ -181,7 +184,7 @@ private:
 
 public:
   OZSolverHardSpheres(double x_max, double eta, uint32_t n_points, double tol)
-   : Density(pi/6.0*eta),
+   : Density(6.0/pi*eta),
      DeltaR(x_max/n_points),
      Tolerance(tol),
      GridPoints(n_points)
@@ -212,7 +215,7 @@ void OZSolverHardSpheres::__ComputeClosure()
 double OZSolverHardSpheres::__ComputeError(double * new_gamma_r)
 {
   double err = 0.0;
-  for(uint32_t i = 0; i < GridPoints; i++) {
+  for(uint32_t i = 1; i < GridPoints; i++) {
     err += std::fabs(new_gamma_r[i]-Gamma_r[i]);
   }
   return err;
@@ -220,24 +223,28 @@ double OZSolverHardSpheres::__ComputeError(double * new_gamma_r)
 
 void OZSolverHardSpheres::__ComputeNewGamma()
 {
-  double alpha = 0.5;
+  double alpha = 0.5, delta_q = pi/GridPoints/DeltaR;
   double * new_gamma_r = new double[GridPoints];
   for (uint32_t i = 0; i < GridPoints; i++) { Gamma_r[i] = 0.0; }
-  printf("rho: %lf, gp: %d, dr: %lf\n",Density, GridPoints, DeltaR);
+
+  printf("rho: %lf, gp: %d, dr: %lf\n", Density, GridPoints, DeltaR);
+
   for (uint32_t i = 0; i < MaxIterations; i++) {
     __ComputeClosure();
-    for (uint32_t j = 0; j < GridPoints; j++) { C_k[j] = 2.0/GridPoints*C_r[j]; }
-    //for (uint32_t j = 0; j < GridPoints; j++) { printf("%lf ", DeltaR*j); } printf("\n");
-    //for (uint32_t j = 0; j < GridPoints; j++) { printf("%lf ", Gamma_r[j]); } printf("\n");
+
+    for (uint32_t j = 1; j < GridPoints; j++) { C_k[j] = j*4*pi*DeltaR*DeltaR/delta_q*C_r[j]; }
     sinft(C_k, GridPoints);
-    for (uint32_t j = 0; j < GridPoints; j++) {
-      new_gamma_r[j] = Density*C_k[j]*C_k[j]/(1-Density*C_k[j]);
+
+    for (uint32_t j = 1; j < GridPoints; j++) {
+      new_gamma_r[j] = delta_q*delta_q/(2.0*pi*pi*DeltaR)/j*Density*C_k[j]*C_k[j]/(1.0-Density*C_k[j]/j);
     }
+
     sinft(new_gamma_r, GridPoints);
-    //for (uint32_t j = 0; j < GridPoints; j++) { printf("%lf ", new_gamma_r[j]); } printf("\n");
-    printf("Error: %lf\n", __ComputeError(new_gamma_r));
+    for (uint32_t j = 1; j < GridPoints; j++) { new_gamma_r[j] = new_gamma_r[j]/j; }
+
     if (__ComputeError(new_gamma_r) < Tolerance) {
       for (uint32_t j = 0; j < GridPoints; j++) { Gamma_r[j] = new_gamma_r[j]; }
+      printf("Iterations: %d\n", i);
       break;
     } else {
       for (uint32_t j = 0; j < GridPoints; j++) { Gamma_r[j] = alpha*new_gamma_r[j] + (1-alpha)*Gamma_r[j]; }
@@ -250,16 +257,36 @@ void OZSolverHardSpheres::ComputeOutputAndSave(const char * filename)
   __ComputeNewGamma();
   __ComputeClosure();
 
-  double * g_r, * s_k;
-  g_r = new double[GridPoints];
-  s_k = new double[GridPoints];
+  double delta_q = pi/GridPoints/DeltaR;
 
-  for (uint32_t i = 0; i < GridPoints; i++) {
-    s_k[i] = 1.0/(1.0-Density*C_k[i]);
-    g_r[i] = Density*(s_k[i]-1.0);
+  for (uint32_t j = 1; j < GridPoints; j++) { C_k[j] = j*4*pi*DeltaR*DeltaR/delta_q*C_r[j]; }
+  sinft(C_k, GridPoints);
+
+  double * g_r = new double[GridPoints];
+  double * s_k = new double[GridPoints];
+  double * c_tr = new double[GridPoints];
+  double * c_tk = new double[GridPoints];
+  double * g_t = new double[GridPoints];
+  double * s_t = new double[GridPoints];
+
+  for (uint32_t i = 1; i < GridPoints; i++) {
+    s_k[i] = 1.0 / (1.0 - Density * C_k[i]/i);
+    g_r[i] = delta_q*delta_q/(2.0*pi*pi*DeltaR)*i*(s_k[i]-1)/Density;
+    c_tr[i] = c_theo(Density * pi / 6.0, i * DeltaR);
+    c_tk[i] = i*4*pi*DeltaR*DeltaR/delta_q*c_tr[i];
+  }
+
+  sinft(c_tk, GridPoints);
+
+  for (uint32_t i = 1; i < GridPoints; i++) {
+    s_t[i] = 1.0 / (1.0 - Density * c_tk[i]/i);
+    g_t[i] = delta_q*delta_q/(2.0*pi*pi*DeltaR)*i*(s_t[i]-1)/Density;
   }
 
   sinft(g_r, GridPoints);
+  sinft(g_t, GridPoints);
+
+  for (uint32_t i = 1; i < GridPoints; i++) { g_t[i] = g_t[i]/i+1; g_r[i] = g_r[i]/i+1; }
 
   Json::Value Root;
 
@@ -271,10 +298,17 @@ void OZSolverHardSpheres::ComputeOutputAndSave(const char * filename)
     Root["c_r"][i] = C_r[i];
     Root["g_r"][i] = g_r[i];
     Root["s_k"][i] = s_k[i];
+    Root["c_t"][i] = c_tr[i];
+    Root["g_t"][i] = g_t[i];
+    Root["s_t"][i] = s_t[i];
   }
 
   delete[] g_r;
   delete[] s_k;
+  delete[] c_tr;
+  delete[] c_tk;
+  delete[] g_t;
+  delete[] s_t;
 
   Json::FastWriter writer;
   std::ofstream savefile(filename);
