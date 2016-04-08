@@ -12,56 +12,71 @@ import sys
 
 fig = plt.figure()
 
-start = 0
+start = 100
 
 filenames = sys.argv[1:]
 
-"""
+#"""
 # Question 2.
 
 ax = fig.add_subplot(1,1,1)
 
-x = [[], [], []]
-y = [[], [], []]
+x = [[], []]
+x_nvt = [[], []]
+y = [[], []]
+y_nvt = [[], []]
+
 for n, f in enumerate(filenames):
   try:
     data = json.loads(open(f, "r").read())
+    if "Mu" in data:
+      mu = data["Mu"]
+      rho = average(data["Density"][start:])
+    else:
+      mu = average(data["MuExcess"][start:])+log(data["Density"])/data["Beta"]
+      rho = data["Density"]
+
     if abs(1/data["Beta"]-2.0)<1e-5:
-      y[0].append(data["Mu"])
-      x[0].append(average(data["Density"][start:]))
+      if "Mu" in data:
+        y[0].append(mu)
+        x[0].append(rho)
+      else:
+        y_nvt[0].append(mu)
+        x_nvt[0].append(rho)
+
     elif abs(1/data["Beta"]-1.0)<1e-5:
-      y[1].append(data["Mu"])
-      x[1].append(average(data["Density"][start:]))
-    elif abs(1/data["Beta"]-0.5)<1e-5:
-      y[2].append(data["Mu"])
-      x[2].append(average(data["Density"][start:]))
+      if "Mu" in data:
+        y[1].append(mu)
+        x[1].append(rho)
+      else:
+        y_nvt[1].append(mu)
+        x_nvt[1].append(rho)
     del data
-    print("%d, %d, %d" % (len(y[0]), len(y[1]), len(y[2])))
+    print("%s, (%d, %d)" % (f, len(y[0])+len(y_nvt[0]), len(y[1])+len(y_nvt[1])))
   except Exception as e:
     print(e)
 
 xmax = 0.7
 
-try:
-  data = json.loads(open("data/state.json", "r").read())
+kwargs2 = [
+  {"color":"b", "marker":"^", "linestyle":"--"},
+  {"color":"r", "marker":"^", "linestyle":"--"}]
 
-  y2 = array(data["y"])
-  x2 = array(data["x"])
+x_nvt = [array(x_nvt[i]) for i in range(len(x_nvt))]
+y_nvt = [array(y_nvt[i]) for i in range(len(y_nvt))]
 
-  kwargs2 = [
-    {"color":"r", "marker":"^", "linestyle":"--"},
-    {"color":"m", "marker":"^", "linestyle":"--"},
-    {"color":"b", "marker":"^", "linestyle":"--"}]
+sorted_ind = [argsort(x_nvt[i]) for i in range(len(x_nvt))]
 
-  for i in [0, 2]:
-    ax.plot(x2[x2<xmax], y2[i][x2<xmax],**kwargs2[i])
-except Exception as e:
-  print(e)
+x_nvt = array([x_nvt[i][sorted_ind[i]] for i in range(len(x_nvt))])
+y_nvt = array([y_nvt[i][sorted_ind[i]] for i in range(len(y_nvt))])
+
+for i in range(len(x_nvt)):
+  if len(x_nvt[i]) == 0: continue
+  ax.plot(x_nvt[i][x_nvt[i]<xmax], y_nvt[i][x_nvt[i]<xmax], **kwargs2[i])
 
 kwargs = [
   {"color":"b", "marker":"o", "linestyle":"-", "label":r"$k_B T / \epsilon = 2.0$"},
-  {"color":"r", "marker":"o", "linestyle":"-", "label":r"$k_B T / \epsilon = 1.0$"},
-  {"color":"m", "marker":"o", "linestyle":"-", "label":r"$k_B T / \epsilon = 0.5$"}]
+  {"color":"r", "marker":"o", "linestyle":"-", "label":r"$k_B T / \epsilon = 1.0$"}]
 
 x = [array(x[i]) for i in range(len(x))]
 y = [array(y[i]) for i in range(len(y))]
@@ -83,7 +98,7 @@ plt.legend(loc=0, numpoints=1)
 plt.savefig("report/graphs/mu_rho_low.png")
 plt.savefig("report/graphs/mu_rho_low.pdf")
 plt.clf()
-"""
+#"""
 
 """
 key = "ParticlesNumber"
@@ -103,7 +118,7 @@ ax.set_ylabel(key)
 ax.legend(loc=0,numpoints=1)
 """
 
-#"""
+"""
 # Question 3
 key = "ParticlesNumber"
 for n, f in enumerate(filenames):
@@ -125,7 +140,7 @@ for n, f in enumerate(filenames):
     ax.set_title(str(e))
 
 print("")
-#"""
+"""
 
 """
 ax = fig.add_subplot(1,1,1)

@@ -133,7 +133,7 @@ From simulations in the NVT ensemble we can expect certain values of $\mu$ as a 
   \caption{Plot of the equation of state, where the dashed lines with triangles are the results from the NVT simulation.}
 \end{figure}
 
-As we can see, there is a remarkable agreement at low densities, and increasingly less for $\rho \sim 0.6$ and larger, possibly because we need either more steps in the simulation as the system has not equilibrated yet (in this case we have started from an initial configuration at low density) or we need more particles in the system.
+As we can see, there is a remarkable agreement at low densities, and increasingly less for $\rho \sim 0.2$ and larger, possibly because we need either more steps in the simulation as the system has not equilibrated yet (in this case we have started from an initial configuration at low density) or we need more particles in the system.
 
 Moreover, from this plot we can easily see the region where the critical point is located, so our search in the next section will be tightly bounded.
 
@@ -143,12 +143,12 @@ As we can see in the following histograms, we have found several values of $(\mu
 
 \begin{figure}[H]
   \begin{center}
-    \includegraphics[width=0.49\textwidth]{{../graphs/hists-close/hist_-2.52333_0.91000}.pdf}
-    \includegraphics[width=0.49\textwidth]{{../graphs/hists-close/hist_-2.52667_0.90000}.pdf}
+    \includegraphics[width=0.49\textwidth]{{../graphs/hists/hist_-3.03333_1.05000}.pdf}
+    \includegraphics[width=0.49\textwidth]{{../graphs/hists/hist_-3.06667_1.05000}.pdf}
   \end{center}
   \begin{center}
-    \includegraphics[width=0.49\textwidth]{{../graphs/hists-close/hist_-2.52000_0.89000}.pdf}
-    \includegraphics[width=0.49\textwidth]{{../graphs/hists-close/hist_-2.53000_0.91000}.pdf}
+    \includegraphics[width=0.49\textwidth]{{../graphs/hists/hist_-3.03333_1.03000}.pdf}
+    \includegraphics[width=0.49\textwidth]{{../graphs/hists/hist_-3.06667_1.07000}.pdf}
   \end{center}
   \caption{Several histograms $h(\rho)$ for different values of $\mu^*$ and $T^*$, showing coexistence.}
 \end{figure}
@@ -157,8 +157,8 @@ By performing several simulations with different values of $\mu^*$ it is possibl
 
 \begin{figure}[H]
   \begin{center}
-    \includegraphics[width=0.49\textwidth]{{../graphs/hists-close/hist_-2.52667_0.89000}.pdf}
-    \includegraphics[width=0.49\textwidth]{{../graphs/hists-T/hist_-2.52661_0.89545}.pdf}
+    \includegraphics[width=0.49\textwidth]{{../graphs/hists/hist_-3.03333_1.07000}.pdf}
+    \includegraphics[width=0.49\textwidth]{{../graphs/hists/hist_-3.06667_1.03000}.pdf}
   \end{center}
   \caption{Histogram showing same-height peaks.}
 \end{figure}
@@ -174,7 +174,7 @@ Plotting now these simulation's results in the $\rho - T^*$ plane we can see the
 
 Here we can see a more-or-less linear relation for $\rho(T^*)$, which if we consider that the right peak is not completely resolved because we start with a low density configuration, a linear behavior is well inside the error bars. Although, we would expect to find a power-law relation instead. It's possible to explain the functional dependence we find for the left peak by looking at the box size we are using, because for smaller boxes the number of particles will not change a lot, and thus for low densities any significant change of the number of particles would be a significant portion of the system, therefore making difficult to see any significant change in this function.
 
-On the other hand, for the right peak we don't have this limitation and thus the shape is closer to a power law as we were expecting. Even in this plot we are not represeting any error bars, the method used to compute this values (by hand) introduces quite large amounts of error, so we can expect not to find a particularly good approximation of the functional dependece for the right peak. This can be improved by using a high density initial configuration and focus in the right peak, instead of starting from a low density configuration for both.
+On the other hand, for the right peak we don't have this limitation and thus the shape is closer to a power law as we were expecting. Even in this plot we are not representing any error bars, the method used to compute this values (by hand) introduces quite large amounts of error, so we can expect not to find a particularly good approximation of the functional dependence for the right peak. This can be improved by using a high density initial configuration and focus in the right peak, instead of starting from a low density configuration for both.
 
 Finally, $h(N)$ can be physically interpreted as the distribution density function of the particle number in the system, and can be related to the free energy if we consider that this energy is related to the derivative of the chemical potential with respect to the number of particles.
 

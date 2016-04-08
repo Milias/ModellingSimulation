@@ -1,12 +1,25 @@
 #!/bin/bash
 
+mkdir -p data/evol data/config data/lattice
+
+rm data/config/*.json
+rm data/lattice/*.json
+
 python python/config.py
-for i in `seq 25 1 39`
+python python/lattice.py
+
+nf=$(($(\ls -afq data/evol | wc -l)-2))
+proc=$(($(grep -c ^processor /proc/cpuinfo)+1))
+for conf in data/config/*.json
 do
-  for j in `seq 1 1 10`
+  for latt in data/lattice/*.json
   do
-    ./bin/week6 -evolve data/config-0.5.json data/density/fcc-$i.json data/0.5/evol-fcc-$i-$j.json
-    ./bin/week6 -evolve data/config-1.0.json data/density/fcc-$i.json data/1/evol-fcc-$i-$j.json
-    ./bin/week6 -evolve data/config-2.0.json data/density/fcc-$i.json data/2/evol-fcc-$i-$j.json
+    ./bin/week6 -evolve $conf $latt data/evol/nvt-$nf.json &
+    let nf=$nf+1
+    while [ $(ps -ef | grep -v grep | grep week6 | wc -l) -gt $proc ]
+    do
+      sleep 5.0
+    done
   done
 done
+wait

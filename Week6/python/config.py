@@ -21,5 +21,5 @@ def SaveInitFile(part_moves, step_size, beta, mu_tests, r_cut, total_steps, save
     print(e)
     return e
 
-for i in [0.5, 1.0, 2.0]:
-  SaveInitFile(0, 0.1, i, 1000, 2.5, 30000, 300, "data/config-%1.1f.json" % i)
+for i, T in enumerate([1.0, 2.0]):
+  SaveInitFile(0, 0.1, 1.0/T, 1000, 2.5, 100000, 100, "data/config/config-%d.json" % i)

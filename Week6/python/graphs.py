@@ -58,6 +58,7 @@ kwargs = [
 for i in range(3):
   ax.plot(x,y[i],**kwargs[i])
 
+
 plt.legend(loc=0,numpoints=1)
 plt.xlabel(r"Density / $\rho \sigma^3$")
 plt.ylabel(r"%s / $\langle %s \rangle$" % (titles[key2], symbol[key2]))
