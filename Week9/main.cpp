@@ -2,6 +2,7 @@
 
 int main(int argc, char ** argv)
 {
+  IsingModel<2> im;
   if (argc > 1) {
     if (strcmp(argv[1], "-oz") == 0 && argc == 7) {
     } else {
