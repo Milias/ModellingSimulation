@@ -4,7 +4,11 @@ int main(int argc, char ** argv)
 {
   IsingModel<2> im;
   if (argc > 1) {
-    if (strcmp(argv[1], "-oz") == 0 && argc == 7) {
+    if (strcmp(argv[1], "--ising") == 0 && argc == 5) {
+      im.InitializeFromFile(argv[2]);
+      im.LoadSystem(argv[3]);
+      im.UpdateSystem();
+      im.SaveSystem(argv[4]);
     } else {
       std::cout << "Error: wrong arguments.\n";
     }
