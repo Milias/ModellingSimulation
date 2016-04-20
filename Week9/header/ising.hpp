@@ -117,9 +117,13 @@ template <uint32_t D> bool IsingModel<D>::__FlipSpin()
   int32_t spin_sum = 0;
   double acc = 1.0;
 
-  for (uint32_t i = 0; i < D; i++) {
-    TempLoc[i] = Random[i].RandomInt();
-  }
+  /*
+    i+-1 % N_total
+    i+-L % _N_total
+    i+-L^2 % N_total
+  */
+
+  for (uint32_t i = 0; i < D; i++) { TempLoc[i] = Random[i].RandomInt(); }
 
   uint32_t ind = System->GetIndex(TempLoc);
 
@@ -127,7 +131,6 @@ template <uint32_t D> bool IsingModel<D>::__FlipSpin()
     TempLoc[i] = TempLoc[i] + 1 == System->Size[i] ? 0 : TempLoc[i] + 1;
     spin_sum += System->GetLocal(TempLoc) ? 1 : -1;
     TempLoc[i] = TempLoc[i] == 0 ? System->Size[i] - 1 : TempLoc[i] - 1;
-
     TempLoc[i] = TempLoc[i] == 0 ? System->Size[i] - 1 : TempLoc[i] - 1;
     spin_sum += System->GetLocal(TempLoc) ? 1 : -1;
     TempLoc[i] = TempLoc[i] + 1 == System->Size[i] ? 0 : TempLoc[i] + 1;
@@ -247,6 +250,7 @@ template <uint32_t D> void IsingModel<D>::SaveSystem(char const * filename)
   Root["Beta"] = Beta;
   Root["J"] = J;
   Root["TotalSteps"] = TotalSteps;
+  Root["SavedSteps"] = SavedSteps;
   Root["TotalSize"]  = System->TotalSize;
   Root["StartFrame"] = SavedSteps - 1;
 
