@@ -8,7 +8,7 @@ rm data/config/*.json
 rm data/lattice/*.json
 rm data/evol/*.json
 
-./python/lattice.py -u 0 256 256 data/lattice/uniform.json
+./python/lattice.py -u 0 16 16 data/lattice/uniform.json
 #./python/lattice.py -r 1 64 64 data/lattice/random.json
 ./python/config.py
 

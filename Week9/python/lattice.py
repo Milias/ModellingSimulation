@@ -15,7 +15,7 @@ def IsingUniformState(value, size, filename):
   system = value*ones(total_size)
 
   data = {}
-  data["Size"] = size
+  data["Size"] = size[0]
   data["Dimensions"] = len(size)
   data["SavedSteps"] = 1
   data["System"] = [list(system)]
@@ -36,7 +36,7 @@ def IsingRandomState(value, size, filename):
   system = random.randint(0, value+1, total_size)
 
   data = {}
-  data["Size"] = size
+  data["Size"] = size[0]
   data["Dimensions"] = len(size)
   data["SavedSteps"] = 1
   data["System"] = [[int(i) for i in system]]

@@ -6,30 +6,24 @@ template <typename T, uint32_t D> struct SystemArray
   T * Array = nullptr;
 
   uint32_t
-    * Size = nullptr,
+    Size = 0,
     TotalSize = 0;
 
-  SystemArray(uint32_t * dim) {
-    Size = new uint32_t[D];
-    TotalSize = 1;
-
-    for (uint32_t i = 0; i < D; i++) {
-      TotalSize *= dim[i];
-      Size[i] = dim[i];
-    }
+  SystemArray(uint32_t L) {
+    Size = L;
+    TotalSize = std::pow(L,D);
 
     Array = new T[TotalSize];
   }
 
   ~SystemArray() {
     delete[] Array;
-    delete[] Size;
   }
 
   uint32_t GetIndex(uint32_t * loc) {
     uint32_t ind = loc[D-1];
     for (uint32_t i = 2; i <= D; i++) {
-      ind *= Size[D-i];
+      ind *= Size;
       ind += loc[D-i];
     }
     return ind;
@@ -62,22 +56,24 @@ protected:
   bool ** StoredSystem = nullptr;
 
   double
-    * Probabilities = nullptr,
+    ClusterProb = 0.0,
     Beta = 0.0,
     J = 0.0;
 
   uint32_t
-    * TempLoc = nullptr,
     TotalSteps = 0,
     SaveInterval = 0,
     SavedSteps = 0,
-    CurrentStep = 0;
+    CurrentStep = 0,
+    * SpinStack = nullptr,
+    * SpinStackPtr = nullptr;
 
-  RandomGenerator * Random = nullptr;
+  RandomGenerator Random;
 
-  bool __FlipSpin();
+  void __ProcessStack(uint32_t temp_loc);
   virtual void __Measure() {}
   void __SaveSystem(uint32_t step);
+  void __PrintSystem();
 
 public:
   IsingModel();
@@ -93,16 +89,10 @@ public:
 
 
 
-template <uint32_t D> IsingModel<D>::IsingModel() :
-  Probabilities(new double[D]),
-  TempLoc(new uint32_t[D]),
-  Random(new RandomGenerator[D]) {}
+template <uint32_t D> IsingModel<D>::IsingModel() {}
 
 template <uint32_t D> IsingModel<D>::~IsingModel()
 {
-  delete[] TempLoc;
-  delete[] Probabilities;
-  delete[] Random;
   if (System) delete System;
 
   if (StoredSystem) {
@@ -111,11 +101,10 @@ template <uint32_t D> IsingModel<D>::~IsingModel()
   }
 }
 
-template <uint32_t D> bool IsingModel<D>::__FlipSpin()
+template <uint32_t D> void IsingModel<D>::__ProcessStack(uint32_t temp_loc)
 {
   // true : spin up (+), false: spin down (-)
-  int32_t spin_sum = 0;
-  double acc = 1.0;
+  // █
 
   /*
     i+-1 % N_total
@@ -123,41 +112,36 @@ template <uint32_t D> bool IsingModel<D>::__FlipSpin()
     i+-L^2 % N_total
   */
 
-  for (uint32_t i = 0; i < D; i++) { TempLoc[i] = Random[i].RandomInt(); }
+  *SpinStackPtr++ = temp_loc;
+  bool t_spin;
+  uint32_t t_ind;
 
-  uint32_t ind = System->GetIndex(TempLoc);
+  while (SpinStackPtr != SpinStack) {
+    temp_loc = *(--SpinStackPtr);
+    for (uint32_t i = 0; i < D; i++) {
+      t_ind = temp_loc + std::pow(System->Size, i) % System->Size;
+      t_spin = System->GetLocal(t_ind);
+      if (t_spin == temp_loc) {
+        if (ClusterProb < Random.RandomProb()) {
+          *SpinStackPtr++ = t_ind;
+          System->SetLocal(t_ind, !t_spin);
+        }
+      }
 
-  for (uint32_t i = 0; i < D; i++) {
-    TempLoc[i] = TempLoc[i] + 1 == System->Size[i] ? 0 : TempLoc[i] + 1;
-    spin_sum += System->GetLocal(TempLoc) ? 1 : -1;
-    TempLoc[i] = TempLoc[i] == 0 ? System->Size[i] - 1 : TempLoc[i] - 1;
-    TempLoc[i] = TempLoc[i] == 0 ? System->Size[i] - 1 : TempLoc[i] - 1;
-    spin_sum += System->GetLocal(TempLoc) ? 1 : -1;
-    TempLoc[i] = TempLoc[i] + 1 == System->Size[i] ? 0 : TempLoc[i] + 1;
-  }
+      t_ind = std::pow(System->Size, i);
+      t_ind = temp_loc > t_ind ? temp_loc - t_ind :
+      if (temp_loc < t_ind) {
 
-  bool spin = System->GetLocal(ind);
-  if (spin) {
-    if (spin_sum > 0) {
-      acc = Probabilities[spin_sum-1];
+      }
+      t_spin = System->GetLocal(t_ind);
+      if (t_spin == temp_loc) {
+        if (ClusterProb < Random.RandomProb()) {
+          *SpinStackPtr++ = t_ind;
+          System->SetLocal(t_ind, !t_spin);
+        }
+      }
     }
-  } else {
-    if (spin_sum < 0) {
-      acc = Probabilities[-spin_sum-1];
-    }
   }
-
-  if (acc < 1.0) {
-    if (acc < Random[0].RandomProb()) {
-      System->SetLocal(!spin,ind);
-      return true;
-    }
-  } else {
-    System->SetLocal(!spin,ind);
-    return true;
-  }
-
-  return false;
 }
 
 template <uint32_t D> void IsingModel<D>::__SaveSystem(uint32_t step)
@@ -165,6 +149,15 @@ template <uint32_t D> void IsingModel<D>::__SaveSystem(uint32_t step)
   for (uint32_t i = 0; i < System->TotalSize; i++) {
     StoredSystem[step][i] = System->GetLocal(i);
   }
+}
+
+template <uint32_t D> void IsingModel<D>::__PrintSystem()
+{
+  for (uint32_t i = 0; i < System->Size; i++) {
+    for (uint32_t j = 0; j < System->Size; j++) {
+      printf("\x1b[3%dm█\x1b[0m",System->GetLocal(i*System->Size+j));
+    } printf("\n");
+  } printf("\n");
 }
 
 template <uint32_t D> void IsingModel<D>::InitializeFromFile(char const * filename)
@@ -181,9 +174,7 @@ template <uint32_t D> void IsingModel<D>::InitializeFromFile(char const * filena
   SaveInterval = Root["SaveInterval"].asUInt();
   SavedSteps = SaveInterval > 0 ? TotalSteps / SaveInterval + 1 : 0;
 
-  for (uint32_t i = 1; i <= D; i++) {
-    Probabilities[i] = std::exp(-Beta*4*J*i);
-  }
+  ClusterProb = 1 - std::exp(-2*Beta*J);
 
   Initialize = true;
 }
@@ -205,7 +196,7 @@ template <uint32_t D> void IsingModel<D>::UpdateSystem()
     }
 
     for (uint32_t j = 0; j < System->TotalSize; j++) {
-      __FlipSpin();
+      __ProcessStack(Random.RandomInt());
     }
   }
   printf("Step: %d/%d\n", CurrentStep+1, TotalSteps);
@@ -222,21 +213,19 @@ template <uint32_t D> void IsingModel<D>::LoadSystem(char const * filename)
   savefile.close();
 
   assert(Root["Dimensions"].asUInt() == D);
-  uint32_t * dim = new uint32_t[D], start_frame = Root["StartFrame"].asUInt();
-  for (uint32_t i = 0; i < D; i++) { dim[i] = Root["Size"][i].asUInt(); }
+  uint32_t start_frame = Root["StartFrame"].asUInt();
 
-  System = new SystemArray<bool, D>(dim);
+  System = new SystemArray<bool, D>(Root["Size"].asUInt());
 
-  delete[] dim;
+  SpinStack = new uint32_t[System->TotalSize];
+  SpinStackPtr = SpinStack;
 
   StoredSystem = new bool*[SavedSteps];
   for (uint32_t i = 0; i < SavedSteps; i++) {
     StoredSystem[i] = new bool[System->TotalSize];
   }
 
-  for (uint32_t i = 0; i < D; i++) {
-    Random[i].SetRange(0, System->Size[i] - 1);
-  }
+  Random.SetRange(0, System->TotalSize - 1);
 
   for (uint32_t i = 0; i < System->TotalSize; i++) {
     System->SetLocal(Root["System"][start_frame][i].asBool(), i);
@@ -253,10 +242,7 @@ template <uint32_t D> void IsingModel<D>::SaveSystem(char const * filename)
   Root["SavedSteps"] = SavedSteps;
   Root["TotalSize"]  = System->TotalSize;
   Root["StartFrame"] = SavedSteps - 1;
-
-  for (uint32_t i = 0; i < D; i++) {
-    Root["Size"][i] = System->Size[i];
-  }
+  Root["Size"] = System->Size;
 
   for (uint32_t i = 0; i < SavedSteps; i++) {
     for (uint32_t j = 0; j < System->TotalSize; j++) {
