@@ -20,7 +20,7 @@ def SaveInitFile(beta, J, total_steps, save_interval, filename):
     return e
 
 nf = 0
-for J in [100000.0]:
+for J in [1.0]:
   for T in [1.0]:
-    SaveInitFile(1/T, J, 100, 1, "data/config/config-%d.json" % nf)
+    SaveInitFile(1/T, J, 10, 1, "data/config/config-%d.json" % nf)
     nf+=1

@@ -66,7 +66,9 @@ protected:
     SavedSteps = 0,
     CurrentStep = 0,
     * SpinStack = nullptr,
-    * SpinStackPtr = nullptr;
+    * SpinStackPtr = nullptr,
+    * AlreadyConsidered = nullptr,
+    AlreadyConsideredNum = 0;
 
   RandomGenerator Random;
 
@@ -74,6 +76,7 @@ protected:
   virtual void __Measure() {}
   void __SaveSystem(uint32_t step);
   void __PrintSystem();
+  bool __CheckStack(uint32_t ind);
 
 public:
   IsingModel();
@@ -96,9 +99,23 @@ template <uint32_t D> IsingModel<D>::~IsingModel()
   if (System) delete System;
 
   if (StoredSystem) {
-    for (uint32_t i = 0; i < TotalSteps; i++) { delete[] StoredSystem[i]; }
+    for (uint32_t i = 0; i < SavedSteps; i++) { delete[] StoredSystem[i]; }
     delete[] StoredSystem;
   }
+
+  if (AlreadyConsidered) delete[] AlreadyConsidered;
+  if (SpinStack) delete[] SpinStack;
+}
+
+template <uint32_t D> bool IsingModel<D>::__CheckStack(uint32_t ind)
+{
+  for (uint32_t i = 0; i < SpinStackPtr-SpinStack; i++) {
+    if (ind == SpinStack[i]) return false;
+  }
+  for (uint32_t i = 0; i < AlreadyConsideredNum; i++) {
+    if (ind == AlreadyConsidered[i]) return false;
+  }
+  return true;
 }
 
 template <uint32_t D> void IsingModel<D>::__ProcessStack(uint32_t temp_loc)
@@ -112,40 +129,60 @@ template <uint32_t D> void IsingModel<D>::__ProcessStack(uint32_t temp_loc)
     i+-L^2 % N_total
   */
 
-  *SpinStackPtr++ = temp_loc;
-  bool t_spin;
+  AlreadyConsideredNum = 0;
+  if (ClusterProb > Random.RandomProb()) {
+    *SpinStackPtr++ = temp_loc;
+    System->SetLocal(!System->GetLocal(temp_loc), temp_loc);
+  }
+  AlreadyConsidered[AlreadyConsideredNum++] = temp_loc;
+
+  //printf("diff: %d, tl: %d\n", SpinStackPtr-SpinStack, temp_loc);
+  bool t_spin, temp_loc_spin;
   uint32_t t_ind;
 
   while (SpinStackPtr != SpinStack) {
     temp_loc = *(--SpinStackPtr);
+    temp_loc_spin = System->GetLocal(temp_loc);
     for (uint32_t i = 0; i < D; i++) {
-      t_ind = temp_loc + std::pow(System->Size, i) % System->Size;
+      t_ind = std::pow(System->Size, i);
+      t_ind = temp_loc + t_ind < System->TotalSize ? temp_loc + t_ind : temp_loc + t_ind - System->TotalSize;
       t_spin = System->GetLocal(t_ind);
-      if (t_spin == temp_loc) {
-        if (ClusterProb < Random.RandomProb()) {
+      //printf("spin a: %d, %d\n", t_ind, t_spin ? 1 : 0);
+      if (t_spin == temp_loc_spin && __CheckStack(t_ind)) {
+        if (ClusterProb > Random.RandomProb()) {
+          //printf("diff a: %d\n", SpinStackPtr-SpinStack);
+          assert(SpinStackPtr + 1 - SpinStack <= System->TotalSize);
           *SpinStackPtr++ = t_ind;
-          System->SetLocal(t_ind, !t_spin);
+          System->SetLocal(!t_spin, t_ind);
         }
       }
+      AlreadyConsidered[AlreadyConsideredNum++] = t_ind;
+
 
       t_ind = std::pow(System->Size, i);
-      t_ind = temp_loc > t_ind ? temp_loc - t_ind :
-      if (temp_loc < t_ind) {
-
-      }
+      t_ind = temp_loc >= t_ind ? temp_loc - t_ind : System->TotalSize - (t_ind - temp_loc);
       t_spin = System->GetLocal(t_ind);
-      if (t_spin == temp_loc) {
-        if (ClusterProb < Random.RandomProb()) {
+      //printf("spin b: %d, %d\n", t_ind, t_spin ? 1 : 0);
+      if (t_spin == temp_loc_spin && __CheckStack(t_ind)) {
+        if (ClusterProb > Random.RandomProb()) {
+          //printf("diff b: %d\n", SpinStackPtr-SpinStack);
+          assert(SpinStackPtr + 1 - SpinStack <= System->TotalSize);
           *SpinStackPtr++ = t_ind;
-          System->SetLocal(t_ind, !t_spin);
+          System->SetLocal(!t_spin, t_ind);
         }
       }
+      AlreadyConsidered[AlreadyConsideredNum++] = t_ind;
     }
+    //__PrintSystem();
   }
 }
 
 template <uint32_t D> void IsingModel<D>::__SaveSystem(uint32_t step)
 {
+  if (step >= SavedSteps) {
+    printf("Warning: step >= SavedSteps. (%d,%d)\n", step, SavedSteps);
+    return;
+  }
   for (uint32_t i = 0; i < System->TotalSize; i++) {
     StoredSystem[step][i] = System->GetLocal(i);
   }
@@ -155,7 +192,7 @@ template <uint32_t D> void IsingModel<D>::__PrintSystem()
 {
   for (uint32_t i = 0; i < System->Size; i++) {
     for (uint32_t j = 0; j < System->Size; j++) {
-      printf("\x1b[3%dm█\x1b[0m",System->GetLocal(i*System->Size+j));
+      printf("\x1b[3%dm██\x1b[0m",System->GetLocal(j*System->Size+i) ? 1 : 2);
     } printf("\n");
   } printf("\n");
 }
@@ -193,15 +230,17 @@ template <uint32_t D> void IsingModel<D>::UpdateSystem()
 
     if (i % print_steps == 0) {
       printf("Step: %d/%d\n", CurrentStep, TotalSteps);
+      __PrintSystem();
     }
 
     for (uint32_t j = 0; j < System->TotalSize; j++) {
       __ProcessStack(Random.RandomInt());
     }
   }
+  __PrintSystem();
   printf("Step: %d/%d\n", CurrentStep+1, TotalSteps);
   __Measure();
-  __SaveSystem(CurrentStep+1);
+  __SaveSystem(SavedSteps-1);
 }
 
 template <uint32_t D> void IsingModel<D>::LoadSystem(char const * filename)
@@ -218,6 +257,7 @@ template <uint32_t D> void IsingModel<D>::LoadSystem(char const * filename)
   System = new SystemArray<bool, D>(Root["Size"].asUInt());
 
   SpinStack = new uint32_t[System->TotalSize];
+  AlreadyConsidered = new uint32_t[System->TotalSize];
   SpinStackPtr = SpinStack;
 
   StoredSystem = new bool*[SavedSteps];
