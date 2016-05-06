@@ -64,7 +64,7 @@ def PlotIsingSystem2D(filename):
   except Exception as e:
     return str(e)
 
-  print(data["Beta"])
+  print("Beta: %f" % data["Beta"])
 
   scene = vs.display(title='3D representation',
     x=0, y=0, width=1440, height=1080,background=(0,0,0)
@@ -73,14 +73,11 @@ def PlotIsingSystem2D(filename):
   spin_up_color = array([0.1, 0.4, 0.8])
   spin_down_color = array([0.7, 0.7, 0.7])
 
-  p_pos = cartesian([arange(0,data["Size"][i]) for i in range(2)])
-  print(data["Size"])
-  system_array = array(data["System"][0]).reshape(data["Size"][0], data["Size"][1])
-  color_array = ((system_array == 1).reshape(data["Size"][0],data["Size"][1],1) * spin_up_color + (system_array == 0).reshape(data["Size"][0],data["Size"][1],1) * spin_down_color).reshape(data["TotalSize"], 3)
+  p_pos = cartesian([arange(0,data["Size"]) for i in range(2)])
+  system_array = array(data["System"][0]).reshape(data["Size"], data["Size"])
+  color_array = ((system_array == 1).reshape(data["Size"],data["Size"],1) * spin_up_color + (system_array == 0).reshape(data["Size"],data["Size"],1) * spin_down_color).reshape(data["TotalSize"], 3)
 
-  print(p_pos.size, system_array.size)
-
-  p = vs.points(pos=p_pos-array([data["Size"][0]*0.5, data["Size"][1]*0.5]), size=15, shape="square", size_units="pixels", color=color_array)
+  p = vs.points(pos=p_pos-array([data["Size"]*0.5, data["Size"]*0.5]), size=15, shape="square", size_units="pixels", color=color_array)
 
   del p_pos
   del color_array
@@ -89,8 +86,8 @@ def PlotIsingSystem2D(filename):
   nt = 0
   while True:
     vs.rate(60)
-    system_array = array(data["System"][nt]).reshape(data["Size"][0], data["Size"][1])
-    color_array = ((system_array == 1).reshape(data["Size"][0],data["Size"][1],1) * spin_up_color + (system_array == 0).reshape(data["Size"][0],data["Size"][1],1) * spin_down_color).reshape(data["TotalSize"], 3)
+    system_array = array(data["System"][nt]).reshape(data["Size"], data["Size"])
+    color_array = ((system_array == 1).reshape(data["Size"],data["Size"],1) * spin_up_color + (system_array == 0).reshape(data["Size"],data["Size"],1) * spin_down_color).reshape(data["TotalSize"], 3)
 
     p.color = color_array
 

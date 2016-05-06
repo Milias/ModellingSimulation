@@ -1,4 +1,4 @@
-CXXFLAGS += -std=c++14 -pedantic -Wall -g -Iheader -I../Shared/json -I../Shared/header
+CXXFLAGS += -std=c++14 -pedantic -Wall -O3 -Iheader -I../Shared/json -I../Shared/header
 TARGET = bin/week9
 
 CPP = $(wildcard *.cpp)

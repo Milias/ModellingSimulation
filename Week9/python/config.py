@@ -3,12 +3,13 @@
 from numpy import *
 import json
 
-def SaveInitFile(beta, J, total_steps, save_interval, filename):
+def SaveInitFile(beta, J, total_steps, save_interval, store_system, filename):
   data = {}
   data["Beta"] = beta
   data["J"] = J
   data["TotalSteps"] = total_steps
   data["SaveInterval"] = save_interval
+  data["StoreSystem"] = store_system
 
   try:
     f = open(filename, "w+")
@@ -21,6 +22,6 @@ def SaveInitFile(beta, J, total_steps, save_interval, filename):
 
 nf = 0
 for J in [1.0]:
-  for T in [1.0]:
-    SaveInitFile(1/T, J, 10, 1, "data/config/config-%d.json" % nf)
+  for T in linspace(2.5, 2.7, 24):
+    SaveInitFile(1/T, J, 1000, 1, False, "data/config/config-%d.json" % nf)
     nf+=1
