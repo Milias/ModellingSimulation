@@ -53,7 +53,8 @@ protected:
 
   bool
     ** StoredSystem = nullptr,
-    StoreSystem = false;
+    StoreSystem = false,
+    Metropolis = false;
 
   double
     ClusterProb = 0.0,
@@ -74,9 +75,9 @@ protected:
 
   RandomGenerator Random;
 
+  void __MetropolisFlip();
   void __ProcessStack(uint32_t temp_loc);
   virtual void __Measure(uint32_t step);
-  void __UpdateEnergy(uint32_t spin_loc, bool spin);
   void __FlipSpin(uint32_t t_ind, bool spin);
   void __SaveSystem(uint32_t step);
   void __PrintSystem();
@@ -109,27 +110,38 @@ template <uint32_t D> IsingModel<D>::~IsingModel()
   }
 }
 
-template <uint32_t D> void IsingModel<D>::__UpdateEnergy(uint32_t spin_loc, bool spin)
-{
-  int32_t temp = 0; uint32_t L = 1;
-  for (uint32_t j = 0; j < D; j++) {
-    temp += System->GetLocal(spin_loc + L < System->TotalSize ? spin_loc + L : spin_loc + L - System->TotalSize) ? 1 : -1;
-    temp += System->GetLocal(spin_loc < L ? System->TotalSize - (L - spin_loc) : spin_loc - L) ? 1 : -1;
-    L *= System->Size;
-  }
-  E += 2*J*(spin ? 1 : -1)*temp;
-  M += 2*(!spin ? 1 : -1);
-}
-
 template <uint32_t D> void IsingModel<D>::__FlipSpin(uint32_t t_ind, bool spin)
 {
   bool t_spin = System->GetLocal(t_ind);
   if (t_spin == spin) {
     if (ClusterProb > Random.RandomProb()) {
       *SpinStackPtr++ = t_ind;
-      //__UpdateEnergy(t_ind, t_spin);
       System->SetLocal(!t_spin, t_ind);
     }
+  }
+}
+
+template <uint32_t D> void IsingModel<D>::__MetropolisFlip()
+{
+  uint32_t spin_loc = Random.RandomInt(), L = 1;
+  int32_t nn_spin = 0;
+  for (uint32_t i = 0; i < D; i++) {
+    nn_spin += System->GetLocal(spin_loc + L < System->TotalSize ? spin_loc + L : spin_loc + L - System->TotalSize) ? 1 : -1;
+    nn_spin += System->GetLocal(spin_loc < L ? System->TotalSize - (L - spin_loc) : spin_loc - L) ? 1 : -1;
+    L *= System->Size;
+  }
+  bool spin = System->GetLocal(spin_loc);
+  double dE = 2*J*(spin ? 1 : -1)*nn_spin;
+  if (dE > 0) {
+    if (std::exp(-Beta*dE) > Random.RandomProb()) {
+      E += dE;
+      M += 2*(spin ? -1 : 1);
+      System->SetLocal(!spin, spin_loc);
+    }
+  } else {
+    E += dE;
+    M += 2*(spin ? -1 : 1);
+    System->SetLocal(!spin, spin_loc);
   }
 }
 
@@ -168,18 +180,20 @@ template <uint32_t D> void IsingModel<D>::__SaveSystem(uint32_t step)
 
 template <uint32_t D> void IsingModel<D>::__Measure(uint32_t step)
 {
-  E = 0.0;
-  M = 0.0;
-  for (uint32_t i = 0; i < System->TotalSize; i++) {
-    M += System->GetLocal(i) ? 1 : -1;
-    for (uint32_t j = 0; j < D; j++) {
-      E += System->GetLocal(i) && System->GetLocal(i + std::pow(System->Size, j) < System->TotalSize ? i + std::pow(System->Size, j) : i + std::pow(System->Size, j) - System->TotalSize) ? 1 : -1;
-      E += System->GetLocal(i) && System->GetLocal(i < std::pow(System->Size, j) ? System->TotalSize - (std::pow(System->Size, j) - i) : i - std::pow(System->Size, j)) ? 1 : -1;
+  if (!Metropolis) {
+    E = 0.0;
+    M = 0.0;
+    for (uint32_t i = 0; i < System->TotalSize; i++) {
+      M += System->GetLocal(i) ? 1 : -1;
+      for (uint32_t j = 0; j < D; j++) {
+        E += System->GetLocal(i) && System->GetLocal(i + std::pow(System->Size, j) < System->TotalSize ? i + std::pow(System->Size, j) : i + std::pow(System->Size, j) - System->TotalSize) ? 1 : -1;
+        E += System->GetLocal(i) && System->GetLocal(i < std::pow(System->Size, j) ? System->TotalSize - (std::pow(System->Size, j) - i) : i - std::pow(System->Size, j)) ? 1 : -1;
+      }
     }
+    E *= -J;
+    StoredE[step] = E;
+    StoredM[step] = M;
   }
-  E *= -J;
-  StoredE[step] = E;
-  StoredM[step] = M;
 }
 
 template <uint32_t D> void IsingModel<D>::__PrintSystem()
@@ -204,6 +218,7 @@ template <uint32_t D> void IsingModel<D>::InitializeFromFile(char const * filena
   TotalSteps = Root["TotalSteps"].asUInt();
   SaveInterval = Root["SaveInterval"].asUInt();
   StoreSystem = Root["StoreSystem"].asBool();
+  Metropolis = Root["Metropolis"].asBool();
   SavedSteps = SaveInterval > 0 ? TotalSteps / SaveInterval + 1 : 0;
 
   StoredE = new double[SavedSteps];
@@ -240,10 +255,13 @@ template <uint32_t D> void IsingModel<D>::UpdateSystem()
 
     if (i % print_steps == 0) {
       printf("Step: %d/%d\n", CurrentStep, TotalSteps);
-      //__PrintSystem();
     }
 
-    for (uint32_t j = 0; j < System->TotalSize; j++) {
+    if (Metropolis) {
+      for (uint32_t i = 0; i < System->TotalSize; i++) {
+        __MetropolisFlip();
+      }
+    } else {
       __ProcessStack(Random.RandomInt());
     }
   }
