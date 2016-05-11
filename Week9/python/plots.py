@@ -229,6 +229,14 @@ def SuscVsT(start, savefile, filenames):
     M_l[i][0] = x2
     M_l[i][1] = y2
 
+  for m in M_l:
+    plt.plot(M_l[m][0], M_l[m][1], "-", label="L = %d" % m, linewidth=1.2)
+  plt.title("Magnetic susceptibility vs Temperature\n")
+  plt.legend(loc=0, numpoints=1)
+  plt.savefig(savefile)
+  plt.show()
+
+  """
   nf = 0
   for i in gamma:
     for j in nu:
@@ -244,10 +252,11 @@ def SuscVsT(start, savefile, filenames):
         plt.savefig("report/graphs/fit-2/fit-%d.png" % nf)
         plt.clf()
         nf += 1
+  """
 
   return "Success."
 
-def AutovsN(savefile, name, filename):
+def AutovsN(savefile, filename):
   try:
     f = open(filename,'r')
     data = json.loads(f.read())
@@ -255,25 +264,15 @@ def AutovsN(savefile, name, filename):
   except Exception as e:
     return str(e)
 
-  if name == "Magnetization":
-    M = abs(array(data[name])[:-1])
-  else:
-    M = array(data[name])[:-1]
-
   print("T = %f" % (1/data["Beta"]))
+  auto_fun = abs(array(data["Autocorrelation"]))
 
-  t = linspace(0, data["TotalSteps"], data["SavedSteps"])
-  t_factor = 1/(t[-1]-t[:-1])
-  auto_fun = zeros(data["SavedSteps"]-1)
-  for i in range(data["SavedSteps"]-1):
-    auto_fun[i] = t_factor[i]*(sum(M[:data["SavedSteps"]-1-i]*M[i:])-sum(M[:data["SavedSteps"]-1-i])*t_factor[i]*sum(M[i:]))
-
-  plt.semilogy(t[:-1], auto_fun, "r-")
+  plt.plot(linspace(0,data["AutoT"][1]-data["AutoT"][0],len(auto_fun)), auto_fun, "r-", linewidth=1.2)
   plt.savefig(savefile)
   plt.show()
   return "Success."
 
-def CorrvsT(start, savefile, filenames):
+def CorrvsT(end, savefile, filenames):
   try:
     data = []
     for filename in filenames:
@@ -283,18 +282,13 @@ def CorrvsT(start, savefile, filenames):
   except Exception as e:
     return str(e)
 
-  start = int(start)
+  end = int(end)
 
   M_l = {}
   for i in range(len(filenames)):
-    print(i/len(filenames))
-    E = array(data[i]["Magnetization"])[:-1]
-    t = linspace(0, data[i]["TotalSteps"], data[i]["SavedSteps"])
-    t_factor = 1/(t[-1]-t[:-1])
-    auto_fun = zeros(data[i]["SavedSteps"]-1)
-    for j in range(data[i]["SavedSteps"]-1):
-      auto_fun[i] = t_factor[i]*(sum(E[:data[i]["SavedSteps"]-1-i]*E[i:])-sum(E[:data[i]["SavedSteps"]-1-i])*t_factor[i]*sum(E[i:]))
-    tau = trapz(auto_fun[start:], t[start:-1])/(average(E*E)-average(abs(E))**2)
+    auto_fun = data[i]["Autocorrelation"]
+    t = linspace(0,data[i]["AutoT"][1]-data[i]["AutoT"][0],len(auto_fun))
+    tau = trapz(auto_fun[:end], t[:end])
 
     if not data[i]["Size"] in M_l:
       M_l[data[i]["Size"]] = [[],[],[]]
@@ -305,9 +299,7 @@ def CorrvsT(start, savefile, filenames):
     else:
       M_l[data[i]["Size"]][1][M_l[data[i]["Size"]][0].index(1/data[i]["Beta"])] += tau
       M_l[data[i]["Size"]][2][M_l[data[i]["Size"]][0].index(1/data[i]["Beta"])] += 1
-    del E
     del t
-    del t_factor
     del auto_fun
 
   del data
@@ -347,7 +339,7 @@ def ParseInput(argv):
     elif argv[1] == "-CvsT":
       print(HeatVsT(sys.argv[2], sys.argv[3], sys.argv[4:]))
     elif argv[1] == "-AvsN":
-      print(AutovsN(sys.argv[2], sys.argv[3], sys.argv[4]))
+      print(AutovsN(sys.argv[2], sys.argv[3]))
     elif argv[1] == "-TauvsT":
       print(CorrvsT(sys.argv[2], sys.argv[3], sys.argv[4:]))
     else:

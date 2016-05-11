@@ -70,6 +70,8 @@ protected:
     SaveInterval = 0,
     SavedSteps = 0,
     CurrentStep = 0,
+    AutoTMax = 0,
+    AutoTMin = 0,
     * SpinStack = nullptr,
     * SpinStackPtr = nullptr;
 
@@ -81,6 +83,7 @@ protected:
   void __FlipSpin(uint32_t t_ind, bool spin);
   void __SaveSystem(uint32_t step);
   void __PrintSystem();
+  double * __ComputeAutocorrelation();
 
 public:
   IsingModel();
@@ -191,9 +194,9 @@ template <uint32_t D> void IsingModel<D>::__Measure(uint32_t step)
       }
     }
     E *= -J;
-    StoredE[step] = E;
-    StoredM[step] = M;
   }
+  StoredE[step] = E;
+  StoredM[step] = M;
 }
 
 template <uint32_t D> void IsingModel<D>::__PrintSystem()
@@ -219,6 +222,8 @@ template <uint32_t D> void IsingModel<D>::InitializeFromFile(char const * filena
   SaveInterval = Root["SaveInterval"].asUInt();
   StoreSystem = Root["StoreSystem"].asBool();
   Metropolis = Root["Metropolis"].asBool();
+  AutoTMin = Root["AutoT"][0].asUInt();
+  AutoTMax = Root["AutoT"][1].asUInt();
   SavedSteps = SaveInterval > 0 ? TotalSteps / SaveInterval + 1 : 0;
 
   StoredE = new double[SavedSteps];
@@ -253,7 +258,7 @@ template <uint32_t D> void IsingModel<D>::UpdateSystem()
       step++;
     }
 
-    if (i % print_steps == 0) {
+    if (i % 1000 == 0) {
       printf("Step: %d/%d\n", CurrentStep, TotalSteps);
     }
 
@@ -298,6 +303,29 @@ template <uint32_t D> void IsingModel<D>::LoadSystem(char const * filename)
   }
 }
 
+template <uint32_t D> double * IsingModel<D>::__ComputeAutocorrelation()
+{
+  uint32_t n_points = AutoTMax - AutoTMin;
+  double * auto_fun = new double[n_points];
+  double t1 = 0.0, t2 = 0.0;
+  for (uint32_t i = 0; i < n_points; i++) {
+    t1 = 0.0; t2 = 0.0;
+    for (uint32_t j = 0; j < n_points - i; j++) {
+      t1 += StoredM[j+AutoTMin]*StoredM[j+i+AutoTMin];
+    }
+    auto_fun[i] = t1/(n_points - i);
+    t1 = 0.0;
+    for (uint32_t j = 0; j < n_points - i; j++) {
+      t1 += StoredM[j+AutoTMin];
+      t2 += StoredM[j+i+AutoTMin];
+    }
+    auto_fun[i] -= t1/(n_points - i)*t2/(n_points - i);
+    if (i > 0) auto_fun[i] /= auto_fun[0];
+  }
+  auto_fun[0] = 1.0;
+  return auto_fun;
+}
+
 template <uint32_t D> void IsingModel<D>::SaveSystem(char const * filename)
 {
   Json::Value Root;
@@ -310,10 +338,21 @@ template <uint32_t D> void IsingModel<D>::SaveSystem(char const * filename)
   Root["StartFrame"] = SavedSteps - 1;
   Root["Size"] = System->Size;
 
+  Root["AutoT"][0] = AutoTMin;
+  Root["AutoT"][1] = AutoTMax;
+
+  double * autocorrelation = __ComputeAutocorrelation();
+
   for (uint32_t i = 0; i < SavedSteps; i++) {
     Root["Energy"][i] = StoredE[i];
     Root["Magnetization"][i] = StoredM[i];
   }
+
+  for (uint32_t i = 0; i < AutoTMax - AutoTMin; i++) {
+    Root["Autocorrelation"][i] = autocorrelation[i];
+  }
+
+  delete[] autocorrelation;
 
   if (StoreSystem) {
     for (uint32_t i = 0; i < SavedSteps; i++) {
