@@ -236,7 +236,7 @@ template <uint32_t D> void IsingModel<D>::InitializeFromFile(char const * filena
 
 template <uint32_t D> void IsingModel<D>::UpdateSystem()
 {
-  uint32_t step = 0, print_steps = std::max(uint32_t(100),TotalSteps/1000+1);
+  uint32_t step = 0;
 
   E = 0.0;
   M = 0.0;

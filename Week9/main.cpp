@@ -2,7 +2,7 @@
 
 int main(int argc, char ** argv)
 {
-  IsingModel<2> im;
+  IsingModel<3> im;
   if (argc > 1) {
     if (strcmp(argv[1], "--ising") == 0 && argc == 5) {
       im.InitializeFromFile(argv[2]);

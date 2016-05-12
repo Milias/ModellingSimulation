@@ -24,12 +24,11 @@ def SaveInitFile(beta, J, total_steps, save_interval, store_system, algorithm, a
 
 nf = 0
 for J in [1.0]:
-  """
-  for T in linspace(1.0, 4.0, 20):
-    SaveInitFile(1/T, J, 40000, 1, False, True, (20000, 40000), "data/config/config-%d.json" % nf)
-    nf+=1
-  """
-  for T in linspace(2.0, 2.8, 30):
+  #"""
+  for T in linspace(1.0, 4.0, 100):
     SaveInitFile(1/T, J, 40000, 1, False, False, (10000, 40000), "data/config/config-%d.json" % nf)
     nf+=1
   #"""
+  for T in linspace(2.1, 2.5, 200):
+    SaveInitFile(1/T, J, 40000, 1, False, False, (10000, 40000), "data/config/config-%d.json" % nf)
+    nf+=1
