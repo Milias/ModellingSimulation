@@ -337,6 +337,7 @@ template <uint32_t D> void IsingModel<D>::SaveSystem(char const * filename)
   Root["TotalSize"]  = System->TotalSize;
   Root["StartFrame"] = SavedSteps - 1;
   Root["Size"] = System->Size;
+  Root["Metropolis"] = Metropolis;
 
   Root["AutoT"][0] = AutoTMin;
   Root["AutoT"][1] = AutoTMax;
