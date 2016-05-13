@@ -83,7 +83,7 @@ protected:
   void __FlipSpin(uint32_t t_ind, bool spin);
   void __SaveSystem(uint32_t step);
   void __PrintSystem();
-  double * __ComputeAutocorrelation();
+  double * __ComputeAutocorrelation(double * stored);
 
 public:
   IsingModel();
@@ -303,7 +303,7 @@ template <uint32_t D> void IsingModel<D>::LoadSystem(char const * filename)
   }
 }
 
-template <uint32_t D> double * IsingModel<D>::__ComputeAutocorrelation()
+template <uint32_t D> double * IsingModel<D>::__ComputeAutocorrelation(double * stored)
 {
   uint32_t n_points = AutoTMax - AutoTMin;
   double * auto_fun = new double[n_points];
@@ -311,13 +311,13 @@ template <uint32_t D> double * IsingModel<D>::__ComputeAutocorrelation()
   for (uint32_t i = 0; i < n_points; i++) {
     t1 = 0.0; t2 = 0.0;
     for (uint32_t j = 0; j < n_points - i; j++) {
-      t1 += StoredM[j+AutoTMin]*StoredM[j+i+AutoTMin];
+      t1 += stored[j+AutoTMin]*stored[j+i+AutoTMin];
     }
     auto_fun[i] = t1/(n_points - i);
     t1 = 0.0;
     for (uint32_t j = 0; j < n_points - i; j++) {
-      t1 += StoredM[j+AutoTMin];
-      t2 += StoredM[j+i+AutoTMin];
+      t1 += stored[j+AutoTMin];
+      t2 += stored[j+i+AutoTMin];
     }
     auto_fun[i] -= t1/(n_points - i)*t2/(n_points - i);
     if (i > 0) auto_fun[i] /= auto_fun[0];
@@ -342,15 +342,24 @@ template <uint32_t D> void IsingModel<D>::SaveSystem(char const * filename)
   Root["AutoT"][0] = AutoTMin;
   Root["AutoT"][1] = AutoTMax;
 
-  double * autocorrelation = __ComputeAutocorrelation();
 
   for (uint32_t i = 0; i < SavedSteps; i++) {
     Root["Energy"][i] = StoredE[i];
     Root["Magnetization"][i] = StoredM[i];
   }
 
+  double * autocorrelation = __ComputeAutocorrelation(StoredM);
+
   for (uint32_t i = 0; i < AutoTMax - AutoTMin; i++) {
-    Root["Autocorrelation"][i] = autocorrelation[i];
+    Root["Autocorrelation"]["M"][i] = autocorrelation[i];
+  }
+
+  delete[] autocorrelation;
+
+  autocorrelation = __ComputeAutocorrelation(StoredE);
+
+  for (uint32_t i = 0; i < AutoTMax - AutoTMin; i++) {
+    Root["Autocorrelation"]["E"][i] = autocorrelation[i];
   }
 
   delete[] autocorrelation;
