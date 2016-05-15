@@ -187,10 +187,11 @@ template <uint32_t D> void IsingModel<D>::__Measure(uint32_t step)
     E = 0.0;
     M = 0.0;
     for (uint32_t i = 0; i < System->TotalSize; i++) {
+      uint32_t L = 1;
       M += System->GetLocal(i) ? 1 : -1;
-      for (uint32_t j = 0; j < D; j++) {
-        E += System->GetLocal(i) && System->GetLocal(i + std::pow(System->Size, j) < System->TotalSize ? i + std::pow(System->Size, j) : i + std::pow(System->Size, j) - System->TotalSize) ? 1 : -1;
-        E += System->GetLocal(i) && System->GetLocal(i < std::pow(System->Size, j) ? System->TotalSize - (std::pow(System->Size, j) - i) : i - std::pow(System->Size, j)) ? 1 : -1;
+      for (uint32_t i = 0; i < D; i++) {
+        E += System->GetLocal(i + L < System->TotalSize ? i + L : i + L - System->TotalSize) == System->GetLocal(i < L ? System->TotalSize - (L - i) : i - L) ? 1 : -1;
+        L *= System->Size;
       }
     }
     E *= -J;
@@ -237,14 +238,14 @@ template <uint32_t D> void IsingModel<D>::InitializeFromFile(char const * filena
 template <uint32_t D> void IsingModel<D>::UpdateSystem()
 {
   uint32_t step = 0;
-
   E = 0.0;
   M = 0.0;
   for (uint32_t i = 0; i < System->TotalSize; i++) {
+    uint32_t L = 1;
     M += System->GetLocal(i) ? 1 : -1;
-    for (uint32_t j = 0; j < D; j++) {
-      E += System->GetLocal(i) && System->GetLocal(i + std::pow(System->Size, j) < System->TotalSize ? i + std::pow(System->Size, j) : i + std::pow(System->Size, j) - System->TotalSize) ? 1 : -1;
-      E += System->GetLocal(i) && System->GetLocal(i < std::pow(System->Size, j) ? System->TotalSize - (std::pow(System->Size, j) - i) : i - std::pow(System->Size, j)) ? 1 : -1;
+    for (uint32_t i = 0; i < D; i++) {
+      E += System->GetLocal(i + L < System->TotalSize ? i + L : i + L - System->TotalSize) == System->GetLocal(i < L ? System->TotalSize - (L - i) : i - L) ? 1 : -1;
+      L *= System->Size;
     }
   }
   E *= -J;

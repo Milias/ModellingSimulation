@@ -1,7 +1,7 @@
 #!/bin/bash
 
 bin=week9
-dim=2
+dim=3
 
 mkdir -p data/evol-$dim data/config data/lattice
 
@@ -9,12 +9,12 @@ rm data/config/*.json
 rm data/lattice/*.json
 #rm data/evol/*.json
 
-./python/lattice.py -u 0 20 $dim data/lattice/uniform-20.json
-#./python/lattice.py -u 0 30 $dim data/lattice/uniform-30.json
+#./python/lattice.py -u 0 20 $dim data/lattice/uniform-20.json
+./python/lattice.py -u 0 30 $dim data/lattice/uniform-30.json
 ./python/lattice.py -u 0 40 $dim data/lattice/uniform-40.json
-#./python/lattice.py -u 0 50 $dim data/lattice/uniform-50.json
-#./python/lattice.py -u 0 60 $dim data/lattice/uniform-60.json
-./python/lattice.py -u 0 100 $dim data/lattice/uniform-100.json
+./python/lattice.py -u 0 50 $dim data/lattice/uniform-50.json
+./python/lattice.py -u 0 60 $dim data/lattice/uniform-60.json
+#./python/lattice.py -u 0 100 $dim data/lattice/uniform-100.json
 ./python/config.py
 
 nf=$(($(\ls -afq data/evol-$dim | wc -l)-2))
