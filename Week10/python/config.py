@@ -3,34 +3,23 @@
 from numpy import *
 import json
 
-def SaveInitFile(beta, J, total_steps, save_interval, store_system, algorithm, auto_t, filename):
+def SaveInitFile(GM, t0, tf, dt, filename):
   data = {}
-  data["Beta"] = beta
-  data["J"] = J
-  data["TotalSteps"] = total_steps
-  data["SaveInterval"] = save_interval
-  data["StoreSystem"] = store_system
-  data["Metropolis"] = algorithm
-  data["AutoT"] = auto_t
+  data["GM"] = GM
+  data["T0"] = t0
+  data["Tf"] = tf
+  data["Dt"] = dt
 
   try:
     f = open(filename, "w+")
     f.write(json.dumps(data))
     f.close()
-    return "Successfully saved to %s." % filename
   except Exception as e:
     print(e)
-    return e
 
-nf = 0
-for J in [1.0]:
-  #"""
-  for T in linspace(4.3, 4.6, 100):
-    SaveInitFile(1/T, J, 40000, 1, False, True, (50, 10000), "data/config/config-%d.json" % nf)
-    nf+=1
-  #"""
-  """
-  for T in linspace(2.1, 2.5, 1):
-    SaveInitFile(1/T, J, 10000, 1, False, True, (50, 10000), "data/config/config-%d.json" % nf)
-    nf+=1
-  """
+GM = 5.165545706e12 #km^3 hour^-2 for Earth.
+t0 = 0.0 # hours
+tf = 50.0 # hours
+dt = 0.1 # hours
+
+SaveInitFile(GM, t0, tf, dt, "data/config/config-1.json")
