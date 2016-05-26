@@ -10,6 +10,7 @@ class Elevator
 {
 private:
   bool Initialize = false;
+  bool FixedEarthBoundary = false;
 
   const uint32_t
     Dimensions = 3;
@@ -25,6 +26,11 @@ private:
     T0 = 0.0,
     Tf = 0.0,
     Dt = 0.0,
+    WPlanet = 0.0,
+    RSurface = 0.0,
+    FrictA = 0.0,
+    FrictB = 0.0,
+    FrictC = 0.0,
     * SprK = nullptr,
     * RotK = nullptr,
     * Inertia = nullptr,
@@ -34,12 +40,14 @@ private:
 
   std::vector<double*> StoredStates;
 
-  void __RHS(const state_type &y, state_type &dy, double t);
+  void __RHS(state_type &y, state_type &dy, double t);
   double __Distance(const state_type &y, uint32_t i, uint32_t j);
   double __Modulus2(const state_type &y, uint32_t i);
+  double __Alpha(const state_type &y, uint32_t i);
 
-  void __EarthBoundary(const state_type &y, state_type &dy, const double t);
-  void __SpaceBoundary(const state_type &y, state_type &dy, const double t);
+  void __EarthFixedBoundary(state_type &y, state_type &dy, const double t);
+  void __EarthFreeBoundary(state_type &y, state_type &dy, const double t);
+  void __SpaceFreeBoundary(state_type &y, state_type &dy, const double t);
 
   void __StoreState(const state_type &y, const double t);
 

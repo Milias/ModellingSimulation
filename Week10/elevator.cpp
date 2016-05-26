@@ -1,6 +1,6 @@
 #include "elevator.hpp"
 
-void Elevator::__RHS(const state_type &y, state_type &dy, const double t)
+void Elevator::__RHS(state_type &y, state_type &dy, const double t)
 {
   /*
     y[8*i] = theta_i
@@ -15,8 +15,9 @@ void Elevator::__RHS(const state_type &y, state_type &dy, const double t)
   */
 
   // Boundaries
-  __EarthBoundary(y, dy, t);
-  __SpaceBoundary(y, dy, t);
+  if (FixedEarthBoundary) { __EarthFixedBoundary(y, dy, t); }
+  else { __EarthFreeBoundary(y, dy, t); }
+  __SpaceFreeBoundary(y, dy, t);
 
   // Bulk
   for (uint32_t i = 1; i < ChainSize-1; i++) {
@@ -27,8 +28,10 @@ void Elevator::__RHS(const state_type &y, state_type &dy, const double t)
     for (uint32_t j = 0; j < Dimensions; j++) {
       dy[8*i+1+j] = y[8*i+5+j];
 
-      dy[8*i+5+j] = SprK[i]/Mass[i]*(1-L0/__Distance(y,i+1,i))*(y[8*(i+1)+1+j]-y[8*i+1+j])
-      -SprK[i-1]/Mass[i]*(1-L0/__Distance(y,i,i-1))*(y[8*i+1+j]-y[8*(i-1)+1+j])
+      dy[8*i+5+j] =
+      -__Alpha(y,i)/Mass[i]*y[8*i+5+j]
+      +SprK[i]/Mass[i]*(__Distance(y,i+1,i)-L0)*(y[8*(i+1)+1+j]-y[8*i+1+j])/__Distance(y,i+1,i)
+      -SprK[i-1]/Mass[i]*(__Distance(y,i,i-1)-L0)*(y[8*i+1+j]-y[8*(i-1)+1+j])/__Distance(y,i,i-1)
       -GM/std::pow(__Modulus2(y, i),1.5)*y[8*i+1+j];
     }
   }
@@ -52,7 +55,44 @@ double Elevator::__Modulus2(const state_type &y, uint32_t i)
   return d;
 }
 
-void Elevator::__EarthBoundary(const state_type &y, state_type &dy, const double t)
+double Elevator::__Alpha(const state_type &y, uint32_t i)
+{
+  double d = FrictB*(RSurface-std::sqrt(__Modulus2(y, i)));
+  //printf("fb: %f, rs: %f, dist: %f, d: %f\n", FrictB, RSurface, std::sqrt(__Modulus2(y, i)), d);
+  if (abs(d) < 40.0) {
+    return FrictA*std::exp(d) + FrictC;
+  }
+  return FrictC;
+}
+
+void Elevator::__EarthFixedBoundary(state_type &y, state_type &dy, const double t)
+{
+  /*
+    y[0] = theta_i
+    y[4] = theta_i'
+    y[1+j] = r_ij
+    y[5+j] = r_ij'
+
+    dy[0] = theta_i'
+    dy[4] = theta_i''
+    dy[1+j] = r_ij'
+    dy[5+j] = r_ij''
+  */
+
+  dy[0] = 0.0;
+  dy[4] = 0.0;
+
+  y[1] = -RSurface*std::sin(WPlanet*t);
+  y[2] = 0.0;
+  y[3] = RSurface*std::cos(WPlanet*t);
+
+  for (uint32_t j = 0; j < Dimensions; j++) {
+    dy[1+j] = 0.0;
+    dy[5+j] = 0.0;
+  }
+}
+
+void Elevator::__EarthFreeBoundary(state_type &y, state_type &dy, const double t)
 {
   /*
     y[0] = theta_i
@@ -71,12 +111,14 @@ void Elevator::__EarthBoundary(const state_type &y, state_type &dy, const double
 
   for (uint32_t j = 0; j < Dimensions; j++) {
     dy[1+j] = y[5+j];
-    dy[5+j] = SprK[0]/Mass[0]*(1-L0/__Distance(y,1,0))*(y[8+1+j]-y[1+j])
+    dy[5+j] =
+    -__Alpha(y, 0)/Mass[0]*y[5+j]
+    +SprK[0]/Mass[0]*(__Distance(y,1,0)-L0)*(y[8+1+j]-y[1+j])/__Distance(y,1,0)
     -GM/std::pow(__Modulus2(y, 0),1.5)*y[1+j];
   }
 }
 
-void Elevator::__SpaceBoundary(const state_type &y, state_type &dy, const double t)
+void Elevator::__SpaceFreeBoundary(state_type &y, state_type &dy, const double t)
 {
   /*
     y[8*(ChainSize-1)] = theta_i
@@ -95,8 +137,11 @@ void Elevator::__SpaceBoundary(const state_type &y, state_type &dy, const double
 
   for (uint32_t j = 0; j < Dimensions; j++) {
     dy[8*(ChainSize-1)+1+j] = y[8*(ChainSize-1)+5+j];
-    dy[8*(ChainSize-1)+5+j] = SprK[(ChainSize-1)]/Mass[(ChainSize-1)]*(1-L0/__Distance(y,(ChainSize-1),(ChainSize-2)))*(y[8*(ChainSize-2)+1+j]-y[8*(ChainSize-1)+1+j])
-    -GM/std::pow(__Modulus2(y, (ChainSize-1)),1.5)*y[8*(ChainSize-1)+1+j];
+    dy[8*(ChainSize-1)+5+j] =
+      //-__Alpha(y,ChainSize-1)/Mass[8*(ChainSize-1)]*y[8*(ChainSize-1)+5+j]
+      SprK[ChainSize-1]/Mass[ChainSize-1]*(__Distance(y, ChainSize-1, ChainSize-2)-L0)*(y[8*(ChainSize-2)+1+j]-y[8*(ChainSize-1)+1+j])/__Distance(y, ChainSize-1, ChainSize-2)
+      -GM/std::pow(__Modulus2(y, ChainSize-1),1.5)*y[8*(ChainSize-1)+1+j]
+    ;
   }
 }
 
@@ -124,6 +169,14 @@ void Elevator::InitializeFromFile(char const * filename)
   T0 = Root["T0"].asDouble();
   Tf = Root["Tf"].asDouble();
   Dt = Root["Dt"].asDouble();
+
+  WPlanet = Root["WPlanet"].asDouble();
+  RSurface = Root["RSurface"].asDouble();
+  FixedEarthBoundary = Root["Fixed"].asBool();
+
+  FrictA = Root["FrictA"].asDouble();
+  FrictB = Root["FrictB"].asDouble();
+  FrictC = Root["FrictC"].asDouble();
 
   Initialize = true;
 }
@@ -218,7 +271,7 @@ void Elevator::Integrate()
   runge_kutta4< state_type > stepper;
   integrate_const(
     stepper,
-    [this](const state_type &y, state_type &dy, double t) { this->__RHS(y, dy, t); },
+    [this](state_type &y, state_type &dy, double t) { this->__RHS(y, dy, t); },
     *State, T0, Tf, Dt,
     [this](const state_type &y, const double t) { this->__StoreState(y, t); }
   );
