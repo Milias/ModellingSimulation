@@ -9,23 +9,22 @@ R_earth_equator = 6371.0 # km
 W_earth = 0.2617993877991494 # hour^-1
 R_go = (GM/W_earth**2)**(1/3.0)
 
-N = 30
+N = 100
 low_end_height = R_earth_equator
-top_end_height = R_earth_equator + 100e3
-L0 = (top_end_height-low_end_height)/N
+top_end_height = R_earth_equator + 90e3
+L0 = (top_end_height-low_end_height)/N*0.9
+
+young = 2e12*7.7e-8
 
 print("Space end: %e km" % top_end_height)
 print("Geosynchronus orbital speed: %e km/h" % (GM*W_earth)**(1/3.0))
 print("Geosynchronus orbit: %e km" % R_go)
 
-def StraightRotating(N, r0, rf, L0, w, SprK, RotK, rho, secc, filename):
+def StraightRotating(N, r0, rf, L0, w, SprK, RotK, rho, secc, angles, filename):
   try:
     f = open(filename, "w+")
   except Exception as e:
     return str(e)
-
-  r = zeros((N,3))
-  r[:,2] = linspace(r0,rf,N)
 
   data = {}
   data["L0"] = L0
@@ -36,13 +35,23 @@ def StraightRotating(N, r0, rf, L0, w, SprK, RotK, rho, secc, filename):
   # z: upwards.
   # left hand rule.
 
-  W = w(r)
+  x = linspace(0.0,1.0,N)
+  rl = r0+(rf-r0)*x
+
+  u_d = array([cos(angles[0]), sin(angles[1])*sin(angles[0]), cos(angles[1])*sin(angles[0])])
+
+  r = (rl*reshape(u_d,(3,1))).T
+  wl = w(rl)
+
+  u_p = array([-u_d[1], u_d[0], u_d[2]])
+
+  W = (wl*cross(r,u_p,axisc=1).T).T
+  #W[-1,:] += u_d * 100
   data["Position"] = [list(r[i,:]) for i in range(N)]
   data["Velocity"] = [list(W[i,:]) for i in range(N)]
   data["Angle"] = [0.0]*N
   data["AngularVelocity"] = [0.0]*N
 
-  x = (r[:,2]-low_end_height)/(top_end_height-low_end_height)
   data["SprK"] = list(SprK(x))
   data["RotK"] = list(RotK(x))
   data["Mass"] = list(rho(x)*L0)
@@ -55,4 +64,13 @@ def StraightRotating(N, r0, rf, L0, w, SprK, RotK, rho, secc, filename):
 
 #W_earth*R_earth_equator*ones_like(r[:,2])
 
-print(StraightRotating(N, low_end_height, top_end_height, L0, lambda r: array([-W_earth*r[:,2], zeros_like(r[:,0]), zeros_like(r[:,2])]).T, lambda x: 1e8*(-(x+0.1)**2+x+1), lambda r: 1.0*ones_like(r), lambda x: 10*(-(x+0.1)**2+x+1), lambda r: 7*1.3e-12*ones_like(r), "data/init/sr-01.json"))
+a = 0.4
+b = 0.7
+c = 0.4
+
+f = lambda x: ((a-b)/(2*c-1)*(x**2-2*c*x)+a)/(a+c**2*(a-b)/(2*c-1))
+
+theta = 0.0 * 2*pi/360.0
+theta_0 = 0.0 * 2*pi/360.0
+
+print(StraightRotating(N, low_end_height, top_end_height, L0, lambda r: -W_earth*ones_like(r), lambda x: young*L0*f(x), lambda r: 1.0*ones_like(r), lambda x: 12*f(x), lambda r: 7*1.3e-12*ones_like(r), [theta, theta_0], "data/init/sr-01.json"))

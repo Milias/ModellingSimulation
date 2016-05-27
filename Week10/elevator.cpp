@@ -25,14 +25,24 @@ void Elevator::__RHS(state_type &y, state_type &dy, const double t)
 
     dy[8*i+4] = (RotK[i-1]*y[8*(i-1)]-(RotK[i]+RotK[i-1])*y[8*i]-RotK[i+1]*y[8*(i+1)])/Inertia[i];
 
+    double
+      t_frict = -__Alpha(y,i)/Mass[i],
+      dp = __Distance(y,i+1,i),
+      dm = __Distance(y,i,i-1);
+
+    double
+      t_spr1 = SprK[i]/Mass[i]*(dp-L0)/dp,
+      t_spr2 = -SprK[i-1]/Mass[i]*(dm-L0)/dm,
+      t_g = -GM/std::pow(__Modulus2(y, i),1.5);
+
     for (uint32_t j = 0; j < Dimensions; j++) {
       dy[8*i+1+j] = y[8*i+5+j];
 
       dy[8*i+5+j] =
-      -__Alpha(y,i)/Mass[i]*y[8*i+5+j]
-      +SprK[i]/Mass[i]*(__Distance(y,i+1,i)-L0)*(y[8*(i+1)+1+j]-y[8*i+1+j])/__Distance(y,i+1,i)
-      -SprK[i-1]/Mass[i]*(__Distance(y,i,i-1)-L0)*(y[8*i+1+j]-y[8*(i-1)+1+j])/__Distance(y,i,i-1)
-      -GM/std::pow(__Modulus2(y, i),1.5)*y[8*i+1+j];
+        t_frict*y[8*i+5+j]
+        +t_spr1*(y[8*(i+1)+1+j]-y[8*i+1+j])
+        +t_spr2*(y[8*i+1+j]-y[8*(i-1)+1+j])
+        +t_g*y[8*i+1+j];
     }
   }
 }
@@ -70,7 +80,7 @@ void Elevator::__EarthFixedBoundary(state_type &y, state_type &dy, const double 
   /*
     y[0] = theta_i
     y[4] = theta_i'
-    y[1+j] = r_ij
+    y[  1+j] = r_ij
     y[5+j] = r_ij'
 
     dy[0] = theta_i'
@@ -82,9 +92,9 @@ void Elevator::__EarthFixedBoundary(state_type &y, state_type &dy, const double 
   dy[0] = 0.0;
   dy[4] = 0.0;
 
-  y[1] = -RSurface*std::sin(WPlanet*t);
-  y[2] = 0.0;
-  y[3] = RSurface*std::cos(WPlanet*t);
+  y[1] = RSurface*(std::cos(WPlanet*t)*AnchorAngles[0] + std::sin(WPlanet*t)*AnchorAngles[1]);
+  y[2] = -RSurface*(std::cos(WPlanet*t)*AnchorAngles[3] - std::sin(WPlanet*t)*AnchorAngles[2]);
+  y[3] = RSurface*(std::cos(WPlanet*t)*AnchorAngles[4] - std::sin(WPlanet*t)*AnchorAngles[5]);
 
   for (uint32_t j = 0; j < Dimensions; j++) {
     dy[1+j] = 0.0;
@@ -109,12 +119,21 @@ void Elevator::__EarthFreeBoundary(state_type &y, state_type &dy, const double t
   dy[0] = y[4];
   dy[4] = RotK[0]/Inertia[0]*(y[1]-y[0]);
 
+  double
+    t_frict = -__Alpha(y,0)/Mass[0],
+    dp = __Distance(y,1,0);
+
+  double
+    t_spr1 = SprK[0]/Mass[0]*(dp-L0)/dp,
+    t_g = -GM/std::pow(__Modulus2(y, 0),1.5);
+
   for (uint32_t j = 0; j < Dimensions; j++) {
     dy[1+j] = y[5+j];
+
     dy[5+j] =
-    -__Alpha(y, 0)/Mass[0]*y[5+j]
-    +SprK[0]/Mass[0]*(__Distance(y,1,0)-L0)*(y[8+1+j]-y[1+j])/__Distance(y,1,0)
-    -GM/std::pow(__Modulus2(y, 0),1.5)*y[1+j];
+      t_frict*y[5+j]
+      +t_spr1*(y[8+1+j]-y[1+j])
+      +t_g*y[1+j];
   }
 }
 
@@ -135,12 +154,18 @@ void Elevator::__SpaceFreeBoundary(state_type &y, state_type &dy, const double t
   dy[8*(ChainSize-1)] = y[8*(ChainSize-1)+4];
   dy[8*(ChainSize-1)+4] = RotK[(ChainSize-1)]/Inertia[(ChainSize-1)]*(y[(ChainSize-2)]-y[(ChainSize-1)]);
 
+  double
+    dp = __Distance(y, ChainSize-1, ChainSize-2);
+
+  double
+    t_spr1 = SprK[ChainSize-1]/Mass[ChainSize-1]*(dp-L0)/dp,
+    t_g = -GM/std::pow(__Modulus2(y, ChainSize-1),1.5);
+
   for (uint32_t j = 0; j < Dimensions; j++) {
     dy[8*(ChainSize-1)+1+j] = y[8*(ChainSize-1)+5+j];
     dy[8*(ChainSize-1)+5+j] =
-      //-__Alpha(y,ChainSize-1)/Mass[8*(ChainSize-1)]*y[8*(ChainSize-1)+5+j]
-      SprK[ChainSize-1]/Mass[ChainSize-1]*(__Distance(y, ChainSize-1, ChainSize-2)-L0)*(y[8*(ChainSize-2)+1+j]-y[8*(ChainSize-1)+1+j])/__Distance(y, ChainSize-1, ChainSize-2)
-      -GM/std::pow(__Modulus2(y, ChainSize-1),1.5)*y[8*(ChainSize-1)+1+j]
+      t_spr1*(y[8*(ChainSize-2)+1+j]-y[8*(ChainSize-1)+1+j])
+      +t_g*y[8*(ChainSize-1)+1+j]
     ;
   }
 }
@@ -177,6 +202,13 @@ void Elevator::InitializeFromFile(char const * filename)
   FrictA = Root["FrictA"].asDouble();
   FrictB = Root["FrictB"].asDouble();
   FrictC = Root["FrictC"].asDouble();
+
+  // cos(theta), sin(theta), sin(theta_0)*cos(theta), sin(theta_0)*sin(theta), cos(theta_0)*sin(theta)
+  uint32_t num_anchor_parameters = 6;
+  AnchorAngles = new double[num_anchor_parameters];
+  for (uint32_t i = 0; i < num_anchor_parameters; i++) {
+    AnchorAngles[i] = Root["AnchorAngles"][i].asDouble();
+  }
 
   Initialize = true;
 }

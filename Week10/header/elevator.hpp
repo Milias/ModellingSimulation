@@ -31,6 +31,7 @@ private:
     FrictA = 0.0,
     FrictB = 0.0,
     FrictC = 0.0,
+    * AnchorAngles = nullptr,
     * SprK = nullptr,
     * RotK = nullptr,
     * Inertia = nullptr,
@@ -58,6 +59,7 @@ public:
     delete[] RotK;
     delete[] Inertia;
     delete[] Mass;
+    delete[] AnchorAngles;
     delete State;
   }
 
