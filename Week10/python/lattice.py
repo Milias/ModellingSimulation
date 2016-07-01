@@ -11,10 +11,10 @@ R_go = (GM/W_earth**2)**(1/3.0)
 
 N = 100
 low_end_height = R_earth_equator
-top_end_height = R_earth_equator + 90e3
-L0 = (top_end_height-low_end_height)/N*0.9
+top_end_height = 100e3
+L0 = (top_end_height-low_end_height)/N*0.85
 
-young = 2e12*7.7e-8
+young = 1e12*7.7e-8
 
 print("Space end: %e km" % top_end_height)
 print("Geosynchronus orbital speed: %e km/h" % (GM*W_earth)**(1/3.0))
@@ -66,9 +66,9 @@ def StraightRotating(N, r0, rf, L0, w, SprK, RotK, rho, secc, angles, filename):
 
 a = 0.4
 b = 0.7
-c = 0.4
+c = 0.6
 
-f = lambda x: ((a-b)/(2*c-1)*(x**2-2*c*x)+a)/(a+c**2*(a-b)/(2*c-1))
+f = lambda x: (1-(b-a)*c-a)/c/(c-1)*(x*x-x)+(b-a)*x+a
 
 theta = 0.0 * 2*pi/360.0
 theta_0 = 0.0 * 2*pi/360.0

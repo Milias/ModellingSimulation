@@ -22,6 +22,7 @@
 %\usepackage{epstopdf}
 \usepackage{tikz,datatool}
 \usepackage{hyperref}
+\usepackage{mathabx}
 
 \newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
 
@@ -96,307 +97,362 @@ emphstyle={\color{blue}\ttfamily}
 
 \begin{minipage}[b]{\linewidth}
   \centering
-  \Large \textsc{Numerical analysis of the phase transition in the Ising Model}\\
+  \Large \textsc{Numerical analysis of the Space Elevator}\\
   ~\\
   \large \textsc{Francisco García Flórez}
 \end{minipage}
 
-\section{Introduction}
+\section{Abstract}
 
-% Phase transition, critical temperature, critical exponents, universality class.
+In this project we are going to study the dynamics of an space elevator, modeled as a number of particles connected by springs under the action of a gravitational potential centered in Earth. Since the equations of motion are not linear, we need to solve them numerically, although, since the solution we are looking for is very specific we can perform the analysis of the movement as small perturbations around an almost static solution.
 
-The Ising model describes a simple system of tightly bounded spin states, which can be solved exactly in two dimensions and approximately in three. However, its relevance comes from the fact that it is part of an universality class of systems. This means that every physical system described by models in the same class will share a few characteristics, namely critical exponents of quantities in phase transitions. The Ising model is specially relevant because it's part of this universality class, and it's the simplest one to work with and compute these exponents.
+\section{Theoretical model}
 
-Even though some specific properties of the phase transition in the Ising model, like the critical point, are not shared with other systems, it's still interesting to compute, and indirectly required to compute the exponents.
+In this section we will lay out the fundamental concepts that are going to be used in the simulation, and introduce the framework in which we will work. Firstly, we will consider the space elevator as an string, physically realized as a finite number of masses attached to each other by springs.
 
-The goal of this project is thus to compute the critical exponents of the magnetic susceptibility and the specific heat, using the Ising model in two and three dimensions.
+\subsection{Discretized string}
 
-\section{General considerations}
-
-In this project we are going to consider the following Hamiltonian for the system
-
-\begin{equation} \label{eq:hamiltonian} H = - J \sum_{\avg{ij}} s_i s_j - B \sum_i s_i \text{ ,} \end{equation}
-
-where $J$ and $B$ are positive constants, referencing respectively the alignment energy and a possible external magnetic field, which we will consider zero. Since this is a numerical simulation of the Ising model, there are several core remarks that we will explicitly state in the following.
-
-\subsection{System size, boundary conditions and dimensionality}
-
-Firstly, we will consider systems with different numbers of lattice points, defined as $N=L^d$, that we will use to increase the precision of some measurements and avoid size-specific effects. In relation to this remark, since we cannot simulate an infinite system we are imposing helical boundary conditions, defined as
-
-\begin{equation} s_i = s_{\mod(i\pm L^n, N)} ~~ \forall n \in [0,d) \text{ ,} \end{equation}
-
-where $d$ is the space dimension of the system. We are going to be considering both 2D and 3D systems only, but we will keep our expressions as dimension-independent as possible.
-
-\subsection{Monte-Carlo algorithms}
-
-This is a Monte-Carlo simulation of the Ising model, meaning we will compute several quantities like Energy or Magnetization using different configurations of the system. To find these configurations we will follow two different algorithms: Metropolis and Wolff's. We are not going to go into the details of how and why they work, just the basics:
-
-\begin{itemize}
-  \item \textbf{Metropolis algorithm with single spin-flip dynamics.} As the name suggests, we will be performing single lattice point spin flips, $N$ of them per simulation step. Because it's a Metropolis algorithm the acceptance ratio is given by
-
-  \begin{equation} A(\mu \rightarrow \nu) = \left\{ \begin{matrix} e^{-\beta(E_\nu-E_\mu)} & \text{ if } E_\nu - E_\mu > 0 \\
-  1 & \text{otherwise} \end{matrix} \right. \text{ .} \end{equation}
-
-  Since each lattice point will be picked, on average, the same amount of times we will use simulation steps per lattice site as the unit of measure for time in every simulation generated with this algorithm.
-
-  \item \textbf{Wolff's algorithm.} In this case we are not going to flip only one spin, but instead we will look for clusters of parallel spins and flip all of them with some probability. Using this algorithm near the critical point increases significantly the speed of the simulation. The probability of adding one extra spin to the cluster can be chosen to be
-
-  \begin{equation} P_{\text{add}} = 1 - e^{-2\beta J} \text{ .} \end{equation}
-
-  In this case we cannot use simulation steps per lattice point as a constant unit, so instead we will  cluster flips as time for this algorithm. In the implementation we choose one cluster flip per simulation step, so in the following we will simply call $t$ ``Simulation steps''.
-\end{itemize}
-
-\subsection{Autocorrelation functions and Correlation time $\tau$}
-
-Finally, for all these simulations to work we need to compute averages of quantities once the system has reached equilibrium, process also known as \emph{thermalization}. There are several methods to check whether or not the system has equilibrated, but the simplest one is looking at the Magnetization and Energy as a function of simulation steps (per lattice point).
-
-\begin{figure}[h]
-  \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/MvsN-met}.pdf}
-  \end{center}
-  \caption{Plot of the magnetization per lattice point as a function of simulation steps per lattice point (sslp), using Metropolis algorithm.}
-  \label{fig:AvsN-met}
-\end{figure}
-
-In figure \ref{fig:AvsN-met} we can easily see a thermalization time of around 100 sslp, however, as we could expect it depends heavily on $T$. In this simulation we are starting from a system with uniform spins, equivalent to a system at exactly $T=0$, and thus the system equilibrates quicker at $T=2.1$ (as shown in the plot) than at $T=10$, after the phase transition. Later on we will take a second look at this.
+In the following figure we can see a description of the system under consideration:
 
 \begin{figure}[H]
   \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/MvsN-wolff}.pdf}
+    \includegraphics[width=0.5\textwidth]{{../graphs/string}.pdf}
   \end{center}
-  \caption{Plot of the magnetization per lattice point as a function of simulation steps, using Wolff's algorithm.}
-  \label{fig:AvsN-wolff}
+  \caption{Schematic representation of the discretized string.}
+  \label{fig:discrete-string}
 \end{figure}
 
-In figure \ref{fig:AvsN-wolff} we can see a similar plot using the Wolff algorithm. Of course, this algorithm provides significantly lower correlation times, as we will see later it's around 10 to 20 simulation steps. Plotting the energy as a function of steps would gives a similar result, so we can omit the explicit plot. There is a better way to compute how much time should we wait, and it involves computing what is called autocorrelation function. We can compute this both using the energy or the magnetization, using the following expression
+This is clearly a one-dimensional system moving in three dimensions, however in this discretized form we will be considering $N$ particles of different masses coupled by springs under the effect of a spherically symmetric gravitational field. The mass of each particle will be given by $m_n$, and the coupling constant of the spring connecting the particle $n$ and $n+1$ will be $k_n$. Finally, each particle's position will be given by $\vec{X}_n(\tau)$, where $\tau$ is a measure of time, taking the frame of reference in Earth's center of mass.
 
-\begin{equation} \label{eq:autocorrelation} \begin{matrix} \xi_M(t) =  & \frac{1}{t_{\text{max}} - t} \sum_{t'=0}^{t_{\text{max}}-t} M(t')M(t'+t) \\
-             & - \frac{1}{t_{\text{max}} - t} \sum_{t'=0}^{t_{\text{max}}-t} M(t') \\
-             & \times \frac{1}{t_{\text{max}} - t} \sum_{t'=0}^{t_{\text{max}}-t} M(t'+t) \end{matrix} \text{ .} \end{equation}
-
-And equivalently for the energy. From $\xi(t)$ we can compute the correlation time $\tau$ as
-
-\begin{equation} \label{eq:corrtime} \tau = \frac{1}{\xi(0)} \int_0^\infty \dif t \xi(t) \text{ ,} ~~~~ \xi(0) = \avg{M^2} - \avg{|M|}^2 \text{ ,}  \end{equation}
-
-where we could change $M(t)$ by $E(t)$ and do the same with the energy. Firstly, using equation (\ref{eq:autocorrelation}) we find the following results, using the Metropolis algorithm, for energy:
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=0.45\textwidth]{{../graphs/AvsN-E-met}.pdf}
-  \end{center}
-  \caption{Plot of the autocorrelation function $\xi_E(N)$.}
-\end{figure}
-
-From here we can already estimate the correlation time, by looking at how much time does it take to go from one to $e^{-1}$, and we see that it's around one hundred or so time steps. Computing the autocorrelation function using the magnetization provides us with slightly similar results:
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=0.45\textwidth]{{../graphs/AvsN-M-met}.pdf}
-  \end{center}
-  \caption{Plot of the autocorrelation function $\xi_M(N)$.}
-\end{figure}
-
-Remarkably, the correlation time for magnetization is slightly larger than for the energy. This small difference won't change our results, though, as we will always be simulating the system over several tenths of thousands steps, and thus we will have enough different system configurations to get precise enough results. Moreover, because of the way the energy and magnetization are computed, there are other factors that lead to more precision when measuring magnetization-related quantities.
-
-However, using equation (\ref{eq:corrtime}) gives a much better result that we can plot as a function of $T$, and thus giving us a better understanding of its behavior. In the following plot we can see $\tau(T)$ for the Metropolis algorithm.
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=0.45\textwidth]{{../graphs/TauvsT-met}.pdf}
-  \end{center}
-  \caption{Plot of the correlation time $\tau(T)$ using magnetization for the Metropolis algorithm. In this plot we have used error bands instead of bars, showing that within our precision it doesn't depend on the system size.}
-\end{figure}
-
-We can see that near the critical point the correlation time is significantly larger than anywhere else, due to the nature of the algorithm. Because of that, precise simulations near the critical point will take a long time when using the Metropolis algorithm. However, repeating this procedure for the Wolff algorithm we find significantly lower correlation times, meaning this algorithm generates statistically different configurations quicker than Metropolis', and therefore simulations give better results.
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/TauvsT-wolff}.pdf}
-  \end{center}
-  \caption{Plot of the correlation time $\tau(T)$ using magnetization for the Wolff algorithm.}
-\end{figure}
-
-Using Wolff's algorithm we find a completely different dependence, specially for $T>T_c$. Of course, because of the way this algorithm works (adding spins to clusters) it's going to have a hard time trying to generate different system configurations when there are no spin domains in the system anymore. Therefore, for simulations in this regime the Metropolis algorithm is way more efficient. It's also worth mentioning that now we do see system size effects affecting the correlation time, however only for $T>T_c$, $\tau$ being higher for larger values of $L$.
-
-\subsection{A remark about statistical errors}
-
-As everything in physics, we need to estimate how good is a measurement, and for that we will follow the bootstrap method. This means that, on every plot of some quantity $X(T)$ that depends on temperature, we will compute statistical errors using
+Since this is a classical mechanics problem, we can write down the Lagrangian and compute $3N$ equations of motion for the string (given by second order differential equations), that afterwards we will compute numerically. We can then split the Lagrangian in three separate contributions:
 
 \begin{equation}
-  \sigma(X) = \sqrt{\avg{X^2(T)}-\avg{X(T)}^2} \text{ ,}
+  L = T - V_g - V_s \text{ ,}
 \end{equation}
 
-where the average is computed over several values obtained from a number of independent simulations. Because of the data density, error bars can be not so easy to see clearly, but will give us a general idea of how much our results vary from one simulation to the other.
-
-\section{Phase transition}
-
-Now that we have introduced all the core concepts implicitly used in every simulation, let's proceed to study some properties of the phase transition.
-
-\subsection{Energy $E(T)$ and Magnetization $|M(T)|$}
-
-We will start this section plotting both energy and magnetization as a function of temperature, where we would expect to see some sign of the phase transition. However, due to the nature of numerical simulations, points with infinite slope are not possible to reproduce, and thus to explicitly show the phase transition we are required to follow other procedures.
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/EvsT-met}.pdf}
-  \end{center}
-  \caption{Plot of the energy of the system per lattice point for several values of temperature, averaging after reaching equilibrium. Data generated using the Metropolis algorithm.}
-  \label{fig:EvsT-met}
-\end{figure}
-
-Even if we don't see the critical point directly in figure \ref{fig:EvsT-met}, we can easily infer that it's going to be located around $T=2.25$, just by looking at the position of the inflexion point. However, the infinite slope behavior that theory predicts cannot be seen as we had expected.
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/EvsT-wolff}.pdf}
-  \end{center}
-  \caption{Plot of the energy of the system per lattice point for several values of temperature, averaging after reaching equilibrium. Data generated using the Wolff algorithm.}
-  \label{fig:EvsT-wolff}
-\end{figure}
-
- Now, comparing it to data from the Wolff algorithm from figure \ref{fig:EvsT-wolff} we find very similar results, except for a slightly larger error bars in Wolff's algorithm. As a general remark, the energy per lattice point does not depend on the system size, as we expect.
-
- We can compare these two figures to those of the magnetization, and since theory predicts a fairly specific behavior for $|M(T)|$ we can compare it to the analitical solution as well. First, in figure \ref{fig:MvsT-met} we can see results obtained using the Metropolis algorithm.
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/MvsT-met}.pdf}
-  \end{center}
-  \caption{Plot of the magnetization of the system per lattice point for several values of temperature, averaging after reaching equilibrium. Data generated using the Metropolis algorithm.}
-  \label{fig:MvsT-met}
-\end{figure}
-
-As opposed to the energy, in this case the error computing magnetization is significantly larger when using the Metropolis algorithm rather than the Wolff algorithm. This situation can be explained looking back at correlation times for both algorithms, since as we can see in the figure the largest error bars lie around the critical point. Since we are doing the same number of simulation steps per lattice point as cluster flips, the number of different configurations is significantly lower for the Metropolis algorithm. In figure \ref{fig:MvsT-wolff} we can see the equivalent plot using Wolff's algorithm data.
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/MvsT-wolff}.pdf}
-  \end{center}
-  \caption{Plot of the magnetization of the system per lattice point for several values of temperature, averaging after reaching equilibrium. Data generated using the Wolff algorithm.}
-  \label{fig:MvsT-wolff}
-\end{figure}
-
-Another significant remark in comparison with the energy, $M(T)$ does depend on the system size. These are boundary effects, which affect very differently how we compute these two quantities. Recall that we are computing the energy using equation (\ref{eq:hamiltonian}), while the magnetization is computed by
-
-\begin{equation} M = \sum_i s_i \text{ .} \end{equation}
-
-Since the energy is a more ``local'' quantity than magnetization, it will not be as affected as the latter by boundary conditions. However, even if in figure \ref{fig:MvsT-wolff} we cannot see the expected behavior predicted by theory, it's clear that for $L\rightarrow\infty$ we would recover it, and the inflexion point again marks where the critical point is supposed to be, again around $T=2.25$.
-
-\subsection{Specific Heat $c_s(T)$ and Magnetic Susceptibility $\chi(T)$}
-
-After computing the energy and magnetization of the system, we can proceed to compute more involved quantities, that in the end will lead to compute the critical exponents. As before, we will compare results both coming from the Wolff algorithm and the Metropolis algorithm, and for different system sizes as well. Let's start with the specific heat $c_s(T)$, which is given by
+where $T$ is the kinetic term, $V_g$ is the gravitational contribution, and $V_s$ is the spring coupling contribution. It is possible to add other terms to this Lagrangian, that we will discuss later on. Considering the kinetic term first, we have the usual contribution for $N$ particles:
 
 \begin{equation}
-  c_s = \frac{\beta^2}{N}(\avg{E^2}-\avg{E}^2) \text{ .}
+  T = \sum_{n=0}^{N-1} \frac{1}{2} m_n \vec{\dot X}^2_n \text{ .}
 \end{equation}
 
-In figure \ref{fig:CvsT-met} we can see a plot of the results given by the Metropolis algorithm. Even though we don't have precise measurements near the critical point, we can infer a few general ideas from this plot. First, since $E(T)$ does not depend on the system size, we don't expect $c_s(T)$ to depend either as we can see, although this is not true for three dimensional systems. This behavior will significantly affect the critical exponent related to this quantity as we will see in the following section.
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/CvsT-met}.pdf}
-  \end{center}
-  \caption{Plot of the specific heat of the system for several values of temperature, averaging after reaching equilibrium. Data generated using the Metropolis algorithm.}
-  \label{fig:CvsT-met}
-\end{figure}
-
-It is also clear from these results where exactly is the critical point located, as we expected around $T=2.25$. In the next section we will calculate $T_c$ more precisely. A final remark, we can see that small fluctuations in $E(T)$, as shown in figure \ref{fig:EvsT-met} can lead to significant variations in derived data, and thus precise measurements are essential.
-
-Let's continue analyzing the magnetic susceptibility $\chi(T)$ of the system, and comparing results coming from both algorithms. As before, in figure \ref{fig:XvsT-met} we can see our data computed with the Metropolis algorithm, and in figure \ref{fig:XvsT-wolff} the equivalent with the Wolff algorithm.
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/XvsT-met}.pdf}
-  \end{center}
-  \caption{Plot of the magnetic susceptibility of the system for several values of temperature, averaging after reaching equilibrium. Data generated using the Metropolis algorithm.}
-  \label{fig:XvsT-met}
-\end{figure}
-
-As we could have expected by looking at the plots of $|M(T)|$, the Metropolis algorithm gives way worse results than Wolff's, so to compute critical exponents we will be using mostly the latter. Since in the magnetization we found some system size dependence, we also expect to find some in these two plots, and as we can see, near the critical point $\chi(T_c)$ increases with $L$.
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/XvsT-wolff}.pdf}
-  \end{center}
-  \caption{Plot of the magnetic susceptibility of the system for several values of temperature, averaging after reaching equilibrium. Data generated using the Wolff algorithm.}
-  \label{fig:XvsT-wolff}
-\end{figure}
-
-\subsection{Critical point and critical exponents}
-
-Let's finally proceed to compute the critical point and critical exponents. The method we are going to follow is known as data collapse, and consists on multiplying some quantity $X(T)$ by $L$ to some power. Now, by choosing the right values for the exponents, the dependence of the data with the system size should disappear, and thus become only one line. The exponents that satisfy this collapse are called critical exponents.
-
-Besides the critical exponents, we are going to compute the critical point by transforming temperatures like the following
+For the gravitational contribution, we will consider only Earth's pull, however including other bodies like the Moon wouldn't be a problem, given that we know their trajectories. In principle the full dynamical system would consist of a number of $M$ large bodies under gravitational interactions and the string. Since we are only considering Earth's pull, $V_g$ is as follows:
 
 \begin{equation}
-  t = \frac{T-T_c}{T_c} \text{ ,}
+  V_g = \sum_{n=0}^{N-1} \frac{G M m_n}{|\vec{X}_n|} \text{ ,}
 \end{equation}
 
-and then multiply it by $L$ with some exponent. By correctly choosing the critical exponents and critical point we can do the data collapse. First, let's define the coefficients we are going to compute:
+where $G$ is Newton's gravitational constant and $M$ is Earth's mass. Numerically, using kilograms, meters and seconds for these quantities will introduce rounding errors, since $G\sim 10^{-11}$ and $M\sim10^{24}$ in IS units, so we will instead measure $GM$ as a whole, with the following units
+
+$$ GM_{\Earth} = 5.165545706 \cdot 10^{12} \text{ km}^3 \text{ hour}^{-2} \text{ .} $$
+
+This is still a large number, but more manageable. There are also possible generalizations to this term, for example taking into account deviations from spherical shape of the planet, which can produce different contributions in the direction of the north pole compared to the south pole. Continuing with $V_s$, this is the standard spring potential for a number of connected particles, and it reads:
 
 \begin{equation}
-  \left\{
-  \begin{matrix*}
-    t & \rightarrow & L^{\frac{1}{\nu}}\\
-    \chi(T) & \rightarrow & L^{-\frac{\gamma}{\nu}}\\
-    c_s(T) & \rightarrow & L^{-\frac{\alpha}{\nu}}\\
-  \end{matrix*}
-  \right.
+  V_s = \sum_{n=0}^{N-1} \frac{1}{2} k_n (\left|\vec{X}_n - \vec{X}_{n+1}\right| - L_0)^2 \text{ ,}
+\end{equation}
+
+where $L_0$ is the equilibrium distance of the spring. It is possible to add more terms to this potential as well, like second neighbors interactions, a more realistic potential that introduces non-linearities in the equations of motion or string-breaking terms. Although, we will focus in the small perturbations regime, since having extreme oscillations in the system wouldn't work towards our goal of having an stable space elevator.
+
+\subsection{Equations of motion for the discretized string and boundary conditions}
+
+Now that we have written our Lagrangian, we can proceed to compute the equations of motion using Euler-Lagrange equations:
+
+\begin{equation}
+  \der{}{t} \left( \prt{L}{\vec{\dot X}_n} \right) - \prt{L}{\vec{X}_n} = 0 \text{ ,}
+\end{equation}
+
+giving us $3N$ second order differential equations that we can solve numerically. Performing this calculations we find:
+
+\begin{multline}
+  m_n \vec{\ddot X}_n - \frac{G M m_n}{\vec{X}^2_n} \frac{\vec{X}_n}{|\vec{X}_n|} \\
+  +k_{n-1}(\left|\vec{X}_n - \vec{X}_{n-1}\right| - L_0) \frac{\vec{X}_n- \vec{X}_{n-1}}{\left|\vec{X}_n - \vec{X}_{n-1}\right|} \\
+  -k_{n}(\left|\vec{X}_{n+1} - \vec{X}_{n}\right| - L_0) \frac{\vec{X}_{n+1}- \vec{X}_{n}}{\left|\vec{X}_{n+1} - \vec{X}_{n}\right|} = 0 ~,~~~\\
+  n\neq0 ~,~ n\neq N-1 \text{ .}
+\end{multline}
+
+However, this is only valid for the bulk of the string, since $\vec{X}_0$ and $\vec{X}_{N-1}$ are given by the boundary conditions. These conditions may be given by how one particle is connected to the bulk of the string, or they can be fixed to a point in space by a function $\vec{g}(\tau)$. In the former case the equations of motion for the endpoints of the string are
+
+\begin{multline}
+  m_0 \vec{\ddot X}_0 - \frac{G M m_0}{\vec{X}^2_0} \frac{\vec{X}_0}{|\vec{X}_0|} \\
+  -k_{0}(\left|\vec{X}_{1} - \vec{X}_{0}\right| - L_0) \frac{\vec{X}_{1}- \vec{X}_{0}}{\left|\vec{X}_{1} - \vec{X}_{0}\right|} = 0
+\end{multline}
+
+\begin{multline}\label{eq:spacebound}
+  m_{N-1} \vec{\ddot X}_{N-1} - \frac{G M m_{N-1}}{\vec{X}^2_{N-1}} \frac{\vec{X}_{N-1}}{|\vec{X}_{N-1}|} \\
+  +k_{N-2}(\left|\vec{X}_{N-1} - \vec{X}_{N-2}\right| - L_0) \frac{\vec{X}_{N-1}- \vec{X}_{N-2}}{\left|\vec{X}_{N-1} - \vec{X}_{N-2}\right|} = 0 \text{ .}
+\end{multline}
+
+However, we won't be applying these boundary conditions at the same time, since finding a stable solution without direct interactions with the surface of Earth is rather difficult. Instead, we will leave the space endpoint free, using (\ref{eq:spacebound}) only, and the following for Earth's endpoint (``anchor'' in the following):
+
+\begin{multline}
+  \vec{X}_0(\tau) = \\ R_\Earth
+    \begin{pmatrix}
+      \cos(\omega_\Earth \tau) \cos(\theta) + \sin(\omega_\Earth \tau) \sin(\theta) \\
+      -\cos(\omega_\Earth \tau) \sin(\phi) \sin(\theta) + \sin(\omega_\Earth \tau) \sin(\phi) \cos(\theta) \\
+      \cos(\omega_\Earth \tau) \cos(\phi) \sin(\theta) - \sin(\omega_\Earth \tau) \cos(\phi) \cos(\theta)
+    \end{pmatrix}
+  \text{ ,}
+\end{multline}
+
+where $R_\Earth$ is Earth's radius, $\omega_\Earth$ is Earth's rotation angular velocity and the angles $\phi$ and $\theta$ is the location of the elevator anchor on the surface, as latitude and longitude. Usually we will consider $\phi = \theta = 0$, since having the anchor at the equator is the most stable solution, but we can also analyze the effect of a small separation from that point in the motion of the cable.
+
+Physically, this boundary condition means that we are pulling from the cable at the surface, keeping it in place instead of being sling-shot away from the planet. Since we are assuming this force is strong enough, we will set $m_{N-1}$ to a special value. This endpoint will be called counter-weight (``CW'', from now on) for this very reason, since we will consider a much larger mass for it than for the rest of the string.
+
+Finally, once we have our equations of motion as second order differential equations, we need to convert them to a system of $6N$ first order differential equations that we can then numerically solve.
+
+\subsection{Initial conditions and mass profile}
+
+Finding an stable solution for this system is not an easy task, since small perturbations to the parameters can significantly affect the motion. An stable solution is schematically represented in Figure \ref{fig:stable-sol}.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.5\textwidth]{{../graphs/elevator}.pdf}
+  \end{center}
+  \caption{Schematic representation of a stable solution.}
+  \label{fig:stable-sol}
+\end{figure}
+
+In this figure we can see how the outwards tension produced by the rotational motion has to be compensated by the gravitational force downwards and the tension at the anchor, however this compensation will never be perfect, since it is not possible to have a totally static solution without any longitudinal or transversal modes whatsoever.
+
+Another obvious problem we will have to deal with is the fact that we need each point of the string to follow a circular orbit, however we know from undergraduate orbital mechanics that the velocity of a body in a circular orbit of radius $R$ is constant and given by
+
+$$ v_{\text{circular}} = \sqrt{\frac{GM}{R}} \text{ ,} $$
+
+while the tangential velocity of a body rotating with angular velocity $\omega$ is
+
+$$ v_{\text{rotation}} = \omega R \text{ ,} $$
+
+where $R$ is the distance to the axis of rotation. Obviously, for the space elevator these two velocities will only be equal at the geosynchronous orbit, so there will be longitudinal modes moving along the string forcing it to stay as close to the stable solution as possible. In the following section we will analyze such modes.
+
+A final question we need to consider is the mass profile of the string, or $m_n$ and $k_n$ as functions of $n$. To make the definition easier, we will consider the string as an one-dimensional continuous object $\vec{X}(\tau,\sigma)$, where now $\sigma \in [0, 1]$ and for the stable solution represented in Figure \ref{fig:stable-sol} it will look like $|\vec{X}(\tau,\sigma)| = R_\Earth + R \sigma$, where $R$ is the length of the cable. This way, $m_n$ will be given as:
+
+\begin{equation}
+  m_n = m(n\Delta\sigma) ~, ~~~ m(\sigma) = \tilde m_0 f(\sigma) \text{ ,}
+\end{equation}
+
+Since our initial condition will always be this static solution (``straight string'', from now on) $\sigma$ can be easily computed for each node. This $f(x)$ function will be a second order polynomial that we will also use to compute $k_n$, and is given in general by:
+
+\begin{equation}
+  f(x) = \alpha + \beta x + \gamma x^2 = \frac{1-(b-a)c - a}{c(c-1)} (x^2-x)+(b-a)x +a \text{ ,}
+\end{equation}
+
+where the coefficients have been fixed by imposing $f(0) = a$, $f(1) = b$ and $f'(c)=0$. We choose this function to match numerical results from [1], where an optimal mass and spring coupling profiles are given.
+
+\section{Results}
+
+\subsection{Simulation settings}
+
+Before stating the initial conditions of the simulation, we need to configure several parameters of the simulation itself. First, as we mentioned before we will use kilometers and hours as units of length and time, and standard kilograms as mass. With this, we are only going to consider an space elevator on Earth, so the gravitational potential will have as a constant
+
+\begin{equation}
+  GM_{\Earth} = 5.165545706 \cdot 10^{12} \text{ km}^3 \text{ hour}^{-2}  \text{ ,}
+\end{equation}
+
+as we mentioned before. Other constants specified for Earth:
+
+\begin{equation}
+  \begin{dcases*}
+    R_\Earth = 6731 \text{ km} \\
+    \omega_\Earth = 0.2617993877991494 \text{ hour}^{-1} \\
+    \phi = \theta = 0
+  \end{dcases*} \text{ .}
+\end{equation}
+
+We need to specify as well for how many hours the simulation will run, and how many steps are calculated. In a more technical note, we will be using [2], a library written in C++ for integration of first order systems of ordinary differential equations.
+
+\subsection{Initial configuration}
+
+Now, as we mentioned earlier, we will start from a straight string configuration with Earth's endpoint situated on the anchor, and constant angular velocity in the same direction of Earth's rotation. After several simulations, we found the right values for the initial conditions so that we find an stable solution, summarized in the following:
+
+\begin{equation}
+  \begin{dcases*}
+    N = 100 \\
+    R = 10^5 \text{ km} \\
+    \alpha = 0.85 \\
+    L_0 = \alpha R/N \sim 850 \text{ km} \\
+    Y_0 = 7.7 \cdot 10^{4} \text{ km}^{-1} \text{ kg hour}^{-2} \\
+    a = 0.4 \\
+    b = 0.7 \\
+    c = 0.6 \\
+    \tilde m_0 = 12 \text{ kg km}^{-1} L_0 \sim 10.2 \cdot 10^3 \text{ kg} \\
+    \tilde k_0 = Y_0 L_0 \\
+    m_{N-1} = 10^6 \text{ kg} \\
+  \end{dcases*}
   \text{ .}
 \end{equation}
 
-We are going to compute them both in two and three dimensions, since this procedure doesn't change. Let's begin with $\chi(T)$. In practice, what we did to determine the best fit was to plot several combinations of values until we found the most appropriate. In the following plot we can see our results:
+Here $a$, $b$ and $c$ are the constants that specify $f(x)$ and thus the mass and spring couplings profile. $Y_0$ is Young's modulus, thus giving $k_n$. We are only considering a hundred nodes on the string due to technical limitations, as the number of calculations increases significantly with $N$. The length of the cable is an interesting parameter, since we can adjust it so that the center of mass of the string is above or below the geosynchronous orbit, and thus the cable would tend to get sling-shot or fall to earth.
+
+Another relevant parameter is $\alpha$, since we need to take into account that the string will stretch, and it can fall to the ground in the first time steps if the string is at equilibrium. CW's mass also significantly affects the motion, since a large mass at the endpoint will greatly stabilize the solution, by establishing a clear straight line from where the string will deviate.
+
+Although, this initial configuration is suited for a numerical simulation, since it solves problems found when the elevator is already at the straight solution. In reality, engineering a method of deployment requires a completely different approach, since it would probably involve a slow construction in space, directly at the counter-weight, from where an equally slow deployment to the ground would take place. Of course, it is possible to simulate this situation, however in this project we are interested on the orbital mechanics once it has been placed.
+
+\subsection{Counter-Weight motion and oscillation modes}
+
+Even though for us the CW is only a node more massive than the rest, in reality that would be the place where spaceships or space stations would be located, and mainly from where every travel would start. Because of this, its motion is highly relevant from the engineering point of view, since too disruptive perturbations from the equilibrium would make trajectory prediction unreliable.
+
+Therefore, in this section we compute the motion of only this node in the string, but focusing in the longitudinal motion, normal to the surface of the planet. This distance corresponds with $|\vec{X}_{N-1}(\tau)|$, and it is plotted in Figure \ref{fig:CW-motion}:
 
 \begin{figure}[H]
   \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/XvsT-exp-2}.pdf}
+    \includegraphics[width=0.5\textwidth]{{../graphs/CW-dist}.pdf}
   \end{center}
-  \caption{Plot of $\chi(t L^{\frac{1}{\nu}})L^{-\frac{\gamma}{\nu}}$ for a two dimensional system. Values found: $\gamma = 1.755$, $\nu = 0.995$, $T_c=2.268$.}
-  \label{fig:XvsT-exp-2}
+  \caption{Longitudinal motion of the CW.}
+  \label{fig:CW-motion}
 \end{figure}
 
-Since we are working with our best data, it's not a surprise that we can find $\gamma$ and $\nu$ with such accuracy. As we can see, all the lines collapse to the same one, as far as our precision goes, so we can say that these are precise enough values for the exponents. In the next figure we can see a similar result, but using a three dimensional system instead.
+Here we can make several remarks. First of all, we have oscillatory motion both at high and low frequencies, and even if this plot covers $\sim220$ hours of simulation, we can notice that it's increasing, hinting at another even lower frequency mode. Now, the scale in the y axis is $10^3$ km, so the CW moves up and down over a distance of $2\cdot10^3$ km. This amount is negligible compared to the length of the string, however it could be desirable to decrease it even more.
+
+We can analyze this plot in frequency space by Fourier transforming and studying the frequency spectrum that we can see in Figure \ref{fig:CW-modes}:
 
 \begin{figure}[H]
   \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/XvsT-exp-3}.pdf}
+    \includegraphics[width=0.5\textwidth]{{../graphs/CW-modes}.pdf}
   \end{center}
-  \caption{Plot of $\chi(t L^{\frac{1}{\nu}})L^{-\frac{\gamma}{\nu}}$ for a three dimensional system. Values found: $\gamma = 1.237$, $\nu = 0.628$, $T_c=4.51$.}
-  \label{fig:XvsT-exp-3}
+  \caption{Frequency spectrum of the longitudinal modes of the CW.}
+  \label{fig:CW-modes}
 \end{figure}
 
-In this case we find significantly larger error bars, because of several reasons. First, the correlation time in a three dimensional system is slightly larger than in two dimensions, and therefore, to get the same amount of different system configurations we need to simulate over a larger amount of steps. However, in three dimensions $N$ grows as $L^3$, so computing each simulation step takes longer. In conclusion, our results are going to be less accurate unless we significantly increase simulation time.
+Since we don't have enough time steps, we can't probe high frequencies however we do find good resolution at low frequencies. Of course, we were expecting sharp and independently realized oscillation modes because of our approximation about the string couplings, as we know the solution to the wave equation is a sum of oscillatory modes.
 
-Although, within our precision this is a good enough result, close to what other more accurate simulations find. It's worth noticing that $T_c$ is now higher than in the two dimensional case, while $\gamma$ and $\nu$ become lower.
+It is also clear that ultra low frequencies are compressed into the first point, unresolved. However it is clearly visible that significant contribution at frequency $\sim4$ hours, and another one at $\sim75$ minutes.
 
-Let's now compute $\alpha$ using the specific heat $c_s(T)$. Since we already know $T_c$ and $\nu$, $\alpha$ is the only parameter we are going to vary and fit. As before, the following plot contains the best fit we have found for a two dimensional system:
+\subsection{Length perturbations}
+
+Related to the previous section, we can compute the length of the string as a function of time. Even though the following plot will look extremely similar to Figure \ref{fig:CW-motion}, in this case we are also considering normal perturbations. As we can see in the following Figure:
 
 \begin{figure}[H]
   \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/CvsT-exp-met-2}.pdf}
+    \includegraphics[width=0.5\textwidth]{{../graphs/length}.pdf}
   \end{center}
-  \caption{Plot of $c_s(t L^{\frac{1}{\nu}})L^{-\frac{\alpha}{\nu}}$ for a two dimensional system. Values found: $\alpha \sim 0.2$.}
-  \label{fig:CvsT-exp-2}
+  \caption{Length of the string as a function of time.}
+  \label{fig:length-evol}
 \end{figure}
 
-As expected, these results are not as accurate as the ones before, mainly due to the fact that we have found more statistical fluctuations when computing $E(T)$ than with $\chi(T)$. However, theory predicts a value of $\alpha=0$, which we could have predicted by looking at figures \ref{fig:CvsT-met} and \ref{fig:EvsT-met}, since they should not depend on $L$, and thus the exponent of $L$ multiplying $c_s(T)$ should be zero. However, we find a value of $\alpha \sim 0.2$ which should have a large error margin because of these reasons.
-
-In three dimensions we find:
+This fact is a sign of a good configuration, since it means that normal modes are almost nonexistent, while still keeping a motion close to the straight solution. Another significant remark about the length, is that it is related to the tension applied over the string. In Figure \ref{fig:avg-sep} we can visualize at what points the string is more stretched:
 
 \begin{figure}[H]
   \begin{center}
-    \includegraphics[width=0.4\textwidth]{{../graphs/CvsT-exp-met-3}.pdf}
+    \includegraphics[width=0.5\textwidth]{{../graphs/stretch}.pdf}
   \end{center}
-  \caption{Plot of $c_s(t L^{\frac{1}{\nu}})L^{-\frac{\alpha}{\nu}}$ for a two dimensional system. Values found: $\alpha \sim 0.11$.}
-  \label{fig:CvsT-exp-3}
+  \caption{Average separation between nodes.}
+  \label{fig:avg-sep}
 \end{figure}
 
-As we could expect, the accuracy of these results is not quite good, however it is enough to determine that $\alpha \sim 0.1$ in three dimensions.
+Recalling that the length of the string is around a hundred thousand kilometers, it is easy approximate where each node is located in terms of altitude. Remember as well that the geosynchronous orbit is located at height $\sim40\cdot10^3$ km, so we expect a change in the plot for nodes above and below this point, as we indeed see above. Also as we were expecting, near the surface the separation peaks, so the engineering involved in building this anchor would be a delicate problem.
+
+This is not, however, the end of the story. The force is not linearly related to the separation because of the different spring coupling constants, so in Figure \ref{fig:avg-force} we can see the tension density:
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.5\textwidth]{{../graphs/force}.pdf}
+  \end{center}
+  \caption{Average spring tension density between nodes.}
+  \label{fig:avg-force}
+\end{figure}
+
+Now we can clearly see why in Figure \ref{fig:avg-sep} there is a valley around node 70, because by choosing the parameter $c=0.6$ we are making the string stronger at that point. In principle we could choose completely different mass and couplings profiles, for the sake of reality we assume that both share the same shape, and thus at this peak the elevator is the most massive. Physically we can interpret this as having a material of constant density but thicker around this point.
+
+It would be of course desirable that the tension is uniformly distributed along the string, and finding the right profile would be a very interesting analytical and numerical problem. It is possible to use our program for this purpose, by running several simulations and varying the profile until the force is approximately uniform, however we won't focus on this.
+
+\subsection{Normal perturbations from straight solution}
+
+In this section we will be focusing on the perturbations tangential to the straight solution, however we need to introduce some transformations to be able to extract this information. Since the motion is fairly simple, only in the X-Y plane and around the planet, we will take $\vec{X}_n(\tau)$ and transform it to a new basis where tangential modes will be contained to the Y axis, and longitudinal modes to the X axis.
+
+We achieve this by making a rotation for each simulation step $\tau$, of an angle given by the CW and the anchor. In Figure \ref{fig:rotation} an scheme of this transformation is shown, and it is performed at each simulation step.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.5\textwidth]{{../graphs/rotation}.pdf}
+  \end{center}
+  \caption{Schematic representation of the rotation.}
+  \label{fig:rotation}
+\end{figure}
+
+The angle $\theta$ is easily computed by displacing the CW position to the frame of reference $\vec{X}_{CW}-\vec{X}_0$ and then computing $\theta=\arctan(y/x)$. After applying this rotation to the whole string we find $\vec{\tilde X}_n(\tau)$ in the new coordinates, and in Figure \ref{fig:tan-perts} we can see the result.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.5\textwidth]{{../graphs/normal-perts}.pdf}
+  \end{center}
+  \caption{Tangential perturbations divided by length, at different time steps.}
+  \label{fig:tan-perts}
+\end{figure}
+
+Here we are using the parameter $\sigma$ instead of node number, since this is a better representation of the dynamics. In the Y axis perturbations are plotted, and as we can see they are almost negligible, less than 0.5\% of the length of the elevator, in real space that amounts to $\sim500$ km. Of course, the importance of these perturbations is significant, since anything running up or down along the elevator will be subject to forces derived from this motion.
+
+We can represent this motion in a different way, by means of a temperature plot as we can see in Figure \ref{fig:temp-perts}.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.55\textwidth]{{../graphs/straight-perts}.pdf}
+  \end{center}
+  \caption{Temperature plot of tangential perturbations from the straight solution.}
+  \label{fig:temp-perts}
+\end{figure}
+
+In this case we can't represent the whole simulation, but we can clearly see the periodicity of the perturbations. As before, a mode of frequency $\sim14^{-1}$ hours is clearly visible, as well as others of higher frequency $\sim6^{-1}$ hours. Now, another detail we can extract from this plot, in the first perturbation we can clearly see that it takes $\sim2.5$ hours to propagate a perturbation in the surface to the CW, a sound speed of $c_s\sim40\cdot10^3$ km hour$^{-1}$.
+
+Comparing this value with [1], we see that longitudinal perturbations propagate at $\sim100\cdot10^3$ km hour$^{-1}$ much faster than our tangential modes. In the following plot we represent the average deviance from straightness at each time step, and it's clear that the pattern is completely different to what we saw for longitudinal perturbations.
+
+\section{Extensions to this model}
+
+Due to time limits, we weren't able to include as many effects as it would be possible in the simulation. Nevertheless, in this section we will summarize a few of these.
+
+\subsection{General relativity}
+
+Even though our system has been modeled as a discretized string, a more analytically-fitted approach would be to consider a field $X^\mu(\tau, \sigma)$ defined over a 2-manifold satisfying the following action:
+
+\begin{equation}
+  S_p = T \int \dif \tau \dif \sigma ~ \partial_\alpha X^\mu \partial^\alpha X_\mu \text{ , }~~ \partial_\alpha = \left( \prt{}{\tau}, \prt{}{\sigma} \right) \text{ ,}
+\end{equation}
+
+also known as Polyakov's action. This is the fundamental equation in bosonic string theory, however it can be perfectly used in our system. Of course, we would need to adapt this action to our needs, but there is one change specially easy to introduce: the effects of gravity in general relativity. This situation is know in string theory as a \emph{curved background}, but in our case it's much more simple. The new action reads:
+
+\begin{equation}
+  S = T \int \dif \tau \dif \sigma ~ \partial_\alpha X^\mu \partial^\alpha X^\nu G_{\mu\nu}(X) \text{ ,}
+\end{equation}
+
+Where this $G_{\mu\nu}(X)$ would be the space-time metric where the string is moving. Since in this case we are only considering one source of spherically symmetric gravitational potential, it would be given by the Schwarzschild metric:
+
+\begin{multline}
+  c^2 {d \tau}^{2} = \\\left(1 - \frac{r_s}{r} \right) c^2 dt^2 - \left(1-\frac{r_s}{r}\right)^{-1} dr^2 - r^2 \left(d\theta^2 + \sin^2\theta \, d\varphi^2\right) \text{ .}
+\end{multline}
+
+Variations to the motion of the string introduced by this change would be extremely negligible, however it is widely known that GPS satellites work on time scales in which they aren't, and general relativity needs to be considered. In our case, if we wanted to synchronize high precision clocks along the string correctly, then nanosecond deviation wouldn't be negligible, and thus general relativity has to be considered.
+
+\subsection{Other bodies}
+
+A different approach would be to consider perturbations due to Moon's gravitational pull. For this we have two possibilities, either we consider both Earth and Moon as a gravitationally bounded system, fundamentally being a 2-body problem, or we fix Moon's motion to an approximation of the orbit it follows and introduce another term in the Lagrangian, that would look like
+
+\begin{equation}
+  V^\Moon_g = \sum_{n=0}^{N-1} \frac{G M_\Moon m_n}{|\vec{X}_n-\vec{R}_\Moon|} \text{ ,}
+\end{equation}
+
+where $\vec{R}_\Moon(\tau)$ is a fixed function approximating the position of the Moon.
+
+\subsection{Deviations from spherical symmetry in the gravitational potential}
+
+Lastly, another trivial generalization we may consider is the introduction of extra terms to the gravitational potential of the Earth, given by a multipole expansion of the full potential. As explained before, $V_g$ seen as the first term of this multipole expansion can be seen as concentrating the mass of the planet in a point. The next term, called quadrupole, can be computed and it is given by
+
+\begin{equation}
+  V^{(2)}_g = \frac{G}{|\mathbf{x}|} \int_V \dif m(\mathbf{r}) ~ \left(\frac{r}{|\mathbf{x}|}\right)^2 \frac {3 \cos^2 \theta - 1}{2} \text{ .}
+\end{equation}
+
+In this case we are considering a position-dependent density for the planet, but it can be simplified in the final model.
 
 \section{Conclusions}
 
-In this project we have implemented several algorithms to numerically solve the Ising model in different situations, ending up computing the critical exponents. There are many other extensions to this model that we could have studied, for example an external magnetic field $B\neq0$, other critical exponents, or more algorithms.
+Concluding, we have successfully solved the motion of the space elevator in a physically interesting situation by numerical means, and found a stable solution that can be improved to meet the engineering requirements that a project of this extreme complexity would have.
 
-After analyzing our results we can conclude that we have successfully determined the critical exponents, as well as understood at a deeper level the dynamics of the Ising model.
+We have also summarized how can this model be extended, and gave a few ideas as to how a more physical situation could be modeled. For further information in this topic [1] is a great source.
+
+\section{References}
+
+\begin{enumerate}[label={[\arabic*]}]
+  \item Lang, David. \emph{Space Elevator, Dynamics Reference Manual, Section 1}.
+  \item K. Ahnert and M. Mulansky, \emph{Odeint - Solving Ordinary Differential Equations in C++}, AIP Conf. Proc. 1389, pp. 1586-1589 (2011); doi:http://dx.doi.org/10.1063/1.3637934
+\end{enumerate}
 
 \end{document}

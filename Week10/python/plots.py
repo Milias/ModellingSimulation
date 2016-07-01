@@ -4,12 +4,12 @@
 import json
 import sys
 from numpy import *
+from numpy.fft import *
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
-color = {20:"r-", 40:"g-", 100:"b-", 30: "k--", 60:"m--", 50:"g--"}
-
-def MagnetizationVsStep(savefile, filenames):
+def CWDistance(savefile, filenames):
   try:
     data = []
     for filename in filenames:
@@ -19,109 +19,247 @@ def MagnetizationVsStep(savefile, filenames):
   except Exception as e:
     return "Error loading: %s" % str(e)
 
-  M_l = {}
-  for i in range(len(filenames)):
-    M_l[data[i]["Size"]] = [
-      linspace(0, data[i]["TotalSteps"], data[i]["SavedSteps"]),
-      abs(array(data[i]["Magnetization"])/data[i]["TotalSize"])
-    ]
+  pos = []
+  for i in range(len(data)):
+    pos.append(array(data[i]["Position"]))
 
-  for i in M_l:
-    plt.plot(M_l[i][0], M_l[i][1], "-", label="L = %d" % i, linewidth=1.2)
+  y = [sqrt(sum(p[:,-1]**2,1)) for p in pos]
 
-  xlabel = ["Simulation steps", "Simulation steps per lattice point"]
-  plt.title("Magnetization vs Step\n"+r"$T = %1.2f$, $J = %1.2f$" % (1/data[0]["Beta"], data[0]["J"]))
+  plt.title("Counter-Weight distance from the center of Earth")
+  plt.xlabel("Time / hour")
+  plt.ylabel("Distance / $10^3$ km")
+  for i in range(len(y)): plt.plot(data[i]["Time"], y[i]/1e3)
+  plt.show()
+
+  return "Success."
+
+def AverageDisplacement(savefile, filenames):
   try:
-    plt.xlabel(xlabel[data[0]["Metropolis"]])
-  except:
-    plt.xlabel(xlabel[0])
+    data = []
+    for filename in filenames:
+      f = open(filename,'r')
+      data.append(json.loads(f.read()))
+      f.close()
+  except Exception as e:
+    return "Error loading: %s" % str(e)
 
-  plt.ylabel("Magnetization per lattice point")
+  pos = []
+  for i in range(len(data)):
+    pos.append(array(data[i]["Position"]))
+
+  p1 = [p[:,-1]-p[:,0] for p in pos]
+  R_0 = [sum(p1[i]**2,1) for i in range(len(pos))]
+  p2 = [(p[:,0].reshape(p[:,0].shape+(1,))-p.transpose(0,2,1)).transpose(1,0,2) for p in pos]
+  dp = [diagonal(tensordot(p1[i],p2[i],1)).T for i in range(len(pos))]
+
+  y = [average(sqrt(sum(((-0.5/R_0[i].reshape(R_0[i].shape+(1,))*dp[i]*p1[i].reshape(p1[i].shape+(1,)).transpose(1,0,2))-p2[i])**2,0)),0) for i in range(len(pos))]
+
+  plt.title("Average displacement from straight solution")
+  plt.xlabel("Time / hour")
+  plt.ylabel("Distance / km")
+  for i in range(len(y)): plt.plot(arange(0,100), y[i])
+  plt.show()
+
+  return "Success."
+
+def ComputeForce(savefile, filenames):
+  try:
+    data = []
+    for filename in filenames:
+      f = open(filename,'r')
+      data.append(json.loads(f.read()))
+      f.close()
+  except Exception as e:
+    return "Error loading: %s" % str(e)
+
+  pos = [array(d["Position"]) for d in data]
+  sprk = [array(d["SprK"]) for d in data]
+
+  y = [sprk[i][:-1]*average(sqrt(sum((pos[i][:,1:]-pos[i][:,:-1])**2,2)),0) for i in range(len(pos))]
+
+  plt.title("Average tension density over the string")
+  plt.xlabel("Node")
+  plt.ylabel("Force density / 10$^3$ N/km")
+  for i in range(len(y)): plt.plot(arange(0,99), y[i]*1e3/3600**2/1e3/average(sqrt(sum((pos[i][:,1:]-pos[i][:,:-1])**2,2)),0))
+  plt.show()
+
+  return "Success."
+
+def LongModesCW(savefile, filenames):
+  try:
+    data = []
+    for filename in filenames:
+      f = open(filename,'r')
+      data.append(json.loads(f.read()))
+      f.close()
+  except Exception as e:
+    return "Error loading: %s" % str(e)
+
+  pos = [array(d["Position"]) for d in data]
+  t = linspace(0,64,2048)
+  #dt = t[1]-t[0]
+  dt = data[0]["Dt"]
+
+  yt = [sqrt(sum(p[:,-1]**2,1)) for p in pos]
+  #yt = [sin(5*pi*t)+cos(10*pi*t) for p in pos]
+  yw = [rfftn(yt[i]) for i in range(len(pos))]
+  yw2 = [abs(yw[i][1:int(0.5*yw[i].size)+1]) for i in range(len(pos))]
+  w = [rfftfreq(yw[i].size, dt)[1:] for i in range(len(yw2))]
+
+  print(dt)
+  print(yw2[0].shape)
+  print(w[0].shape)
+  print(yt[0].shape)
+
+  plt.title("Radial modes of vibration - Counter-Weight")
+  plt.xlabel("Frequency / hour$^{-1}$")
+  plt.ylabel("Amplitude")
+  for i in range(len(yw2)): plt.plot(w[i], yw2[i]/max(yw2[i]))
+  plt.show()
+
+  return "Success."
+
+def StringModes(savefile, filenames):
+  try:
+    data = []
+    for filename in filenames:
+      f = open(filename,'r')
+      data.append(json.loads(f.read()))
+      f.close()
+  except Exception as e:
+    return "Error loading: %s" % str(e)
+
+  pos = [array(d["Position"]) for d in data]
+  t = [array(d["Time"]) for d in data]
+
+  th = [arctan2(p[:,-1,0]-p[:,0,0],p[:,-1,2]-p[:,0,2]) for p in pos]
+
+  rotpos = [zeros_like(p) for p in pos]
+  for i in range(len(pos)):
+    rotpos[i][:,:,0] = cos(th[i]).reshape(th[i].shape+(1,))*(pos[i][:,:,0]-pos[i][:,0,0].reshape(th[i].shape+(1,))) - sin(th[i]).reshape(th[i].shape+(1,))*(pos[i][:,:,2]-pos[i][:,0,2].reshape(th[i].shape+(1,)))
+    rotpos[i][:,:,2] = sin(th[i]).reshape(th[i].shape+(1,))*(pos[i][:,:,0]-pos[i][:,0,0].reshape(th[i].shape+(1,))) + cos(th[i]).reshape(th[i].shape+(1,))*(pos[i][:,:,2]-pos[i][:,0,2].reshape(th[i].shape+(1,)))
+
+  yt = [p for p in pos]
+  yw = [rfft(yt[i],axis=0) for i in range(len(pos))]
+  yw2 = [abs(yw[i][1:int(0.5*yw[i].shape[0])+1]) for i in range(len(pos))]
+  w = [rfftfreq(yw[i].shape[0], data[i]["Dt"])[1:] for i in range(len(yw2))]
+
+  yk = [rfft(rotpos[i][:,:,0],axis=0) for i in range(len(pos))]
+  yk2 = [abs(yk[i][1:int(0.5*yk[i].shape[0])+1]) for i in range(len(pos))]
+  k = [rfftfreq(yk[i].shape[0], data[i]["Dt"])[1:] for i in range(len(yw2))]
+
+  print(data[i]["Dt"])
+  print(yt[0].shape)
+  print(yw[0].shape)
+  print(yw2[0].shape)
+  print(w[0].shape)
+
+  """
+  for i in range(len(yw2)):
+    plt.plot(w[i], yw2[i][:,0,0],'r-')
+    plt.plot(w[i], yw2[i][:,0,1],'b-')
+    plt.plot(w[i], yw2[i][:,0,2],'g-')
+  """
+  """
+  plt.title("String perturbations evolution with respect to straight solution")
+  plt.xlabel("$\sigma$ / Dimensionless")
+  plt.ylabel("Perturbations/Length / Dimensionless")
+  for i in range(len(yw2)):
+    for j in linspace(0,1024,6):
+      plt.plot(rotpos[i][int(j),:,2]/max(rotpos[i][int(j),:,2]), rotpos[i][int(j),:,0]/max(rotpos[i][int(j),:,2]),'-',label="Time step: %d" % int(j))
   plt.legend(loc=0)
-  plt.savefig(savefile)
+  """
+  """
+  avg_p = [mean(rotpos[i][:,:,0]/amax(rotpos[i][:,:,2]), axis=1) for i in range(len(pos))]
+  plt.title("Average string perturbations from the straight solution")
+  plt.xlabel("Time / hour")
+  plt.ylabel("Average perturbations over length / dimensionless")
+  for i in range(len(yw2)):
+    plt.plot(data[i]["Time"], avg_p[i], 'b-')
+  """
+  """
+  for i in range(len(yw2)):
+    plt.plot(pos[i][:,0,0], pos[i][:,0,2],'g-')
+    plt.plot(pos[i][:,-1,0], pos[i][:,-1,2],'r-')
+    for j in linspace(0,len(data[i]["Time"]),11)[:-1]:
+      plt.plot(rotpos[i][int(j),:,0], pos[i][int(j),:,2],'k-')
+  plt.axis("equal")
+  """
+  """
+  for i in range(len(yw2)):
+    for j in linspace(0,len(data[i]["Time"]),11)[:-1]:
+      plt.plot(rotpos[i][int(j),:,2]/rotpos[i][int(j),-1,2], rotpos[i][int(j),:,0],'-')
+  """
+  """
+  for i in range(len(yw2)):
+    plt.plot(k[i], average(yk2[i],axis=1), '--')
+    for j in linspace(0,99,10):
+      plt.plot(k[i], yk2[i][:,int(j)], '-')
+  """
+  """
+  n = 0
+  # First set up the figure, the axis, and the plot element we want to animate
+  fig = plt.figure()
+  #ax = plt.axes(xlim=(k[n][0], k[n][-1]), ylim=(0, amax(yk2[n])))
+  ax = plt.axes(xlim=(0, 1), ylim=(amin(rotpos[n][:,:,0]), amax(rotpos[n][:,:,0])))
+  line, = ax.plot([], [], lw=2)
+
+  # initialization function: plot the background of each frame
+  def init():
+    line.set_data([], [])
+    return line,
+
+  # animation function.  This is called sequentially
+  def animate(i):
+    ax.set_title("Time: %3.1f" % t[n][i])
+    line.set_data(rotpos[n][i,:,2]/rotpos[n][i,-1,2], rotpos[n][i,:,0])
+    return line,
+
+  # call the animator.  blit=True means only re-draw the parts that have changed.
+  anim = animation.FuncAnimation(fig, animate, init_func=init, frames=t[n].size, interval=10, blit=True)
   plt.show()
+  """
+  #"""
+  M = 512
+  for i in range(4):
+    plt.subplot(4,1,i+1)
+    if i==0: plt.title("String perturbations evolution from straight solution")
+    plt.imshow(rotpos[0][i*M:(i+1)*M,:,0].T,extent=(data[0]["Time"][i*M],data[0]["Time"][(i+1)*M],1.0,0.0))
+    plt.ylabel("$\sigma$")
+  #"""
+  plt.xlabel("Time / hour")
+  plt.show()
+
   return "Success."
 
-def MagnetizationVsT(start, savefile, filenames):
-  try:
-    data = []
-    for filename in filenames:
-      f = open(filename,'r')
-      data.append(json.loads(f.read()))
-      f.close()
-  except Exception as e:
-    return str(e)
+def StringModes2(savefile, filenames):
+  nt = 2**10
+  nx = 2**11
 
-  start = int(start)
+  t = linspace(0, 1.0, nt)
+  x = linspace(0, 1.0, nx)
 
-  M_l = {}
-  for i in range(len(filenames)):
-    y = average(abs(array(data[i]["Magnetization"])[start:]))/data[i]["TotalSize"]
-    if not data[i]["Size"] in M_l:
-      M_l[data[i]["Size"]] = [[],[],[],[]]
-    if not 1/data[i]["Beta"] in M_l[data[i]["Size"]][0]:
-      M_l[data[i]["Size"]][0].append(1/data[i]["Beta"])
-      M_l[data[i]["Size"]][1].append(y)
-      M_l[data[i]["Size"]][2].append(1)
-      M_l[data[i]["Size"]][3].append(y**2)
-    else:
-      ind = M_l[data[i]["Size"]][0].index(1/data[i]["Beta"])
-      M_l[data[i]["Size"]][1][ind] += y
-      M_l[data[i]["Size"]][2][ind] += 1
-      M_l[data[i]["Size"]][3][ind] += y**2
-    del y
+  [X, T] = meshgrid(x, t)
 
-  for i in M_l:
-    x = array(M_l[i][0])
-    y = array(M_l[i][1])
-    N = array(M_l[i][2])
-    z = array(M_l[i][3])
-    y = y/N
-    z = z/N
-    ind = argsort(x)
-    x2 = x[ind]
-    y2 = y[ind]
-    z2 = z[ind]
-    M_l[i][0] = x2
-    M_l[i][1] = y2
-    M_l[i][3] = sqrt(z2-y2*y2)
+  yx = cos(50*2*pi*X*T)*sin(25*2*pi*T*X)
 
-  for m in M_l:
-    plt.errorbar(M_l[m][0], M_l[m][1], fmt=color[m], yerr=M_l[m][3], label="L = %d" % m, linewidth=1.2)
-    #plt.fill_between(M_l[m][0], M_l[m][1]-M_l[m][3], M_l[m][1]+M_l[m][3], interpolate=True)
+  yk = abs(fft2(yx))
+  k = fftfreq(yk.shape[0], x[1]-x[0])[1:]
+  w = fftfreq(yk.shape[1], t[1]-t[0])[1:]
 
-  plt.title("Magnetization vs Temperature")
-  plt.xlabel(r"Temperature / $T^*$")
-  plt.ylabel("Magnetization per lattice point")
+  print(yk.shape)
+  print(k.shape)
+  print(w.shape)
 
-
-  T_c = linspace(2.2,2.3,5)
-  beta = linspace(1.76,1.77,5)
-  nu = linspace(0.99,1.01,5)
-  """
-  nf = 0
-  for i in beta:
-    for j in nu:
-      for k in T_c:
-        print(nf)
-        for m in M_l:
-          t = (M_l[m][0]-k)/k
-          #plt.plot(M_l[m][0], M_l[m][1], "-", label="L = %d" % m, linewidth=1.2)
-          plt.plot(t*m**(1/j), M_l[m][1]*m**(i/j), "-", label="L = %d" % m, linewidth=1.2)
-          plt.xlim([-10,20])
-        plt.title("Magnetic susceptibility vs Temperature\n"+r"$\gamma = %1.3f, \nu = %1.3f, T_c = %1.3f$" % (i, j, k))
-        plt.legend(loc=0, numpoints=1)
-        plt.savefig("report/graphs/fit-2/fit-%d.png" % nf)
-        plt.clf()
-        nf += 1
-  """
-
-  plt.legend(loc=0,numpoints=1)
-  plt.savefig(savefile)
+  plt.subplot(211)
+  plt.imshow(yx, extent=(x[0],x[-1],t[0],t[-1]))
+  plt.subplot(212)
+  plt.imshow(log(yk[1:nx//2+1,1:nt//2+1]), extent=(w[0],w[-1],k[0],k[-1]))
   plt.show()
+
   return "Success."
 
-def EnergyVsStep(savefile, filenames):
+def StringLength(savefile, filenames):
   try:
     data = []
     for filename in filenames:
@@ -131,370 +269,31 @@ def EnergyVsStep(savefile, filenames):
   except Exception as e:
     return "Error loading: %s" % str(e)
 
-  M_l = {}
-  for i in range(len(filenames)):
-    M_l[data[i]["Size"]] = [
-      linspace(0, data[i]["TotalSteps"], data[i]["SavedSteps"]),
-      array(data[i]["Energy"])/data[i]["TotalSize"]
-    ]
+  pos = [array(d["Position"]) for d in data]
+  y = [sum(sqrt(sum((p[:,:-1]-p[:,1:])**2,2)),1) for p in pos]
 
-  for i in M_l:
-    plt.plot(M_l[i][0], M_l[i][1], "-", label="L = %d" % i, linewidth=1.2)
-
-  xlabel = ["Simulation steps", "Simulation steps per lattice point"]
-  plt.title("Energy vs Step\n"+r"$T = %1.2f$, $J = %1.2f$" % (1/data[0]["Beta"], data[0]["J"]))
-  try:
-    plt.xlabel(xlabel[data[0]["Metropolis"]])
-  except:
-    plt.xlabel(xlabel[0])
-
-
-  plt.ylabel("Energy per lattice point")
-  plt.legend(loc=0,numpoints=1)
-  plt.savefig(savefile)
-  plt.show()
-  return "Success."
-
-def EnergyVsT(start, savefile, filenames):
-  try:
-    data = []
-    for filename in filenames:
-      f = open(filename,'r')
-      data.append(json.loads(f.read()))
-      f.close()
-  except Exception as e:
-    return str(e)
-
-  start = int(start)
-
-  M_l = {}
-  for i in range(len(filenames)):
-    y = average(array(data[i]["Energy"])[start:]**2)#/data[i]["TotalSize"]
-    if not data[i]["Size"] in M_l:
-      M_l[data[i]["Size"]] = [[],[],[],[]]
-    if not 1/data[i]["Beta"] in M_l[data[i]["Size"]][0]:
-      M_l[data[i]["Size"]][0].append(1/data[i]["Beta"])
-      M_l[data[i]["Size"]][1].append(y)
-      M_l[data[i]["Size"]][2].append(1)
-      M_l[data[i]["Size"]][3].append(y**2)
-    else:
-      ind = M_l[data[i]["Size"]][0].index(1/data[i]["Beta"])
-      M_l[data[i]["Size"]][1][ind] += y
-      M_l[data[i]["Size"]][2][ind] += 1
-      M_l[data[i]["Size"]][3][ind] += y**2
-    del y
-
-  for i in M_l:
-    x = array(M_l[i][0])
-    y = array(M_l[i][1])
-    N = array(M_l[i][2])
-    z = array(M_l[i][3])
-    y = y/N
-    z = z/N
-    ind = argsort(x)
-    x2 = x[ind]
-    y2 = y[ind]
-    z2 = z[ind]
-    M_l[i][0] = x2
-    M_l[i][1] = y2
-    M_l[i][3] = sqrt(z2-y2*y2)
-
-  plt.xlim([1.5,3.0])
-  for m in M_l:
-    plt.errorbar(M_l[m][0], M_l[m][1], fmt=color[m], yerr=M_l[m][3], label="L = %d" % m, linewidth=1.2)
-    #plt.fill_between(M_l[m][0], M_l[m][1]-M_l[m][3], M_l[m][1]+M_l[m][3], interpolate=True)
-
-  plt.title("Energy vs Temperature")
-  plt.xlabel(r"Temperature / $T^*$")
-  plt.ylabel("Energy per lattice point")
-
-  plt.legend(loc=0, numpoints=1)
-  plt.savefig(savefile)
-  plt.show()
-  return "Success."
-
-def HeatVsT(start, savefile, filenames):
-  try:
-    data = []
-    for filename in filenames:
-      f = open(filename,'r')
-      data.append(json.loads(f.read()))
-      f.close()
-  except Exception as e:
-    return str(e)
-
-  start = int(start)
-  dim = data[0]["Dimensions"]
-
-  M_l = {}
-  for i in range(len(filenames)):
-    E = array(data[i]["Energy"])[start:]
-    if not data[i]["Size"] in M_l:
-      M_l[data[i]["Size"]] = [[],[],[],[]]
-    y = data[i]["Beta"]**2/data[i]["TotalSize"]*(average(E*E)-average(E)**2)
-    if not 1/data[i]["Beta"] in M_l[data[i]["Size"]][0]:
-      M_l[data[i]["Size"]][0].append(1/data[i]["Beta"])
-      M_l[data[i]["Size"]][1].append(y)
-      M_l[data[i]["Size"]][2].append(1)
-      M_l[data[i]["Size"]][3].append(y**2)
-    else:
-      ind = M_l[data[i]["Size"]][0].index(1/data[i]["Beta"])
-      M_l[data[i]["Size"]][1][ind] += y
-      M_l[data[i]["Size"]][2][ind] += 1
-      M_l[data[i]["Size"]][3][ind] += y**2
-    del E
-
-  plt.title("Specific heat vs Temperature")
-  plt.xlabel(r"Temperature / $T^*$")
-  plt.ylabel("Specific heat / $c_s(T)$")
-
-  for i in M_l:
-    x = array(M_l[i][0])
-    y = array(M_l[i][1])
-    N = array(M_l[i][2])
-    z = array(M_l[i][3])
-    y = y/N
-    z = z/N
-    ind = argsort(x)
-    x2 = x[ind]
-    y2 = y[ind]
-    z2 = z[ind]
-    M_l[i][0] = x2
-    M_l[i][1] = y2
-    M_l[i][3] = sqrt(z2-y2*y2)
-
-  plt.xlim(1.5,3.0)
-  for m in M_l:
-    plt.errorbar(M_l[m][0], M_l[m][1], fmt=color[m], yerr=M_l[m][3], label="L = %d" % m, linewidth=1.2)
-  plt.legend(loc=0, numpoints=1)
-  plt.savefig(savefile)
+  plt.title("String length over time")
+  plt.xlabel("Time / hour")
+  plt.ylabel("Distance / km")
+  for i in range(len(y)): plt.plot(data[i]["Time"], y[i])
   plt.show()
 
-  if dim == 2:
-    T_c = linspace(2.268,2.3,1)
-    alpha = linspace(0.2,0.3,1)
-    nu = linspace(0.995,1.01,1)
-  else:
-    T_c = linspace(4.51,4.52,1)
-    alpha = linspace(0.113,0.115,1)
-    nu = linspace(0.628,1.01,1)
-
-  #"""
-  nf = 0
-  for i in alpha:
-    for j in nu:
-      for k in T_c:
-        print(nf)
-        for m in M_l:
-          t = (M_l[m][0]-k)/k
-          #plt.plot(M_l[m][0], M_l[m][1], "-", label="L = %d" % m, linewidth=1.2)
-          plt.errorbar(t*m**(1/j), M_l[m][1]*m**(-i/j), yerr=M_l[m][3]*m**(-i/j), fmt=color[m], label="L = %d" % m, linewidth=1.2)
-        plt.title("Specific heat vs Temperature\n"+r"$\alpha = %1.3f, \nu = %1.3f, T_c = %1.3f$" % (i, j, k))
-        plt.xlabel(r"Temperature / $t L^{\frac{1}{\nu}}$")
-        plt.ylabel(r"Specific heat / $c_s L^{-\frac{\alpha}{\nu}}$")
-        plt.legend(loc=0, numpoints=1)
-        plt.savefig("report/graphs/fit-spec-%d/fit-%d.pdf" % (dim,nf))
-        plt.show()
-        nf += 1
-  #"""
-  return "Success."
-
-def SuscVsT(start, savefile, filenames):
-  try:
-    data = []
-    for filename in filenames:
-      f = open(filename,'r')
-      data.append(json.loads(f.read()))
-      f.close()
-  except Exception as e:
-    return str(e)
-
-  start = int(start)
-  dim = data[0]["Dimensions"]
-
-  M_l = {}
-  for i in range(len(filenames)):
-    E = array(data[i]["Magnetization"])[start:]
-    if not data[i]["Size"] in M_l:
-      M_l[data[i]["Size"]] = [[],[],[],[]]
-    y = data[i]["Beta"]/data[i]["TotalSize"]*(average(E*E)-average(abs(E))**2)
-    if not 1/data[i]["Beta"] in M_l[data[i]["Size"]][0]:
-      M_l[data[i]["Size"]][0].append(1/data[i]["Beta"])
-      M_l[data[i]["Size"]][1].append(y)
-      M_l[data[i]["Size"]][2].append(1)
-      M_l[data[i]["Size"]][3].append(y**2)
-    else:
-      ind = M_l[data[i]["Size"]][0].index(1/data[i]["Beta"])
-      M_l[data[i]["Size"]][1][ind] += y
-      M_l[data[i]["Size"]][2][ind] += 1
-      M_l[data[i]["Size"]][3][ind] += y**2
-    del E
-    del y
-
-  del data
-  plt.xlabel(r"Temperature / $T^*$")
-  plt.ylabel(r"Magnetic susceptibility / $\chi(T)$")
-
-  for i in M_l:
-    x = array(M_l[i][0])
-    y = array(M_l[i][1])
-    N = array(M_l[i][2])
-    z = array(M_l[i][3])
-    y = y/N
-    z = z/N
-    ind = argsort(x)
-    x2 = x[ind]
-    y2 = y[ind]
-    z2 = z[ind]
-    M_l[i][0] = x2
-    M_l[i][1] = y2
-    M_l[i][3] = sqrt(z2-y2*y2)
-
-  plt.xlim([4.0,5.5])
-  for m in M_l:
-    plt.errorbar(M_l[m][0], M_l[m][1], fmt=color[m], yerr=M_l[m][3], label="L = %d" % m, linewidth=1.2)
-    #plt.fill_between(M_l[m][0], M_l[m][1]-M_l[m][3], M_l[m][1]+M_l[m][3], interpolate=True)
-  plt.title("Magnetic susceptibility vs Temperature\n")
-  plt.legend(loc=0, numpoints=1)
-  plt.savefig(savefile)
-  plt.clf()
-
-  if dim == 2:
-    T_c = linspace(2.267,2.27,3)
-    gamma = linspace(1.74,1.77,3)
-    nu = linspace(0.98,1.01,3)
-  else:
-    T_c = linspace(4.51,4.52,3)
-    gamma = linspace(1.2368,1.2371,3)
-    nu = linspace(0.628,0.631,3)
-
-  #"""
-  nf = 0
-  for i in gamma:
-    for j in nu:
-      for k in T_c:
-        print(nf)
-        for m in M_l:
-          t = (M_l[m][0]-k)/k
-          #plt.plot(M_l[m][0], M_l[m][1], color[m], label="L = %d" % m, linewidth=1.2)
-          plt.errorbar(t*m**(1/j), M_l[m][1]*m**(-i/j), yerr=M_l[m][3]*m**(-i/j), fmt=color[m], label="L = %d" % m, linewidth=1.2)
-          plt.xlim([-10,20])
-        plt.title("Magnetic susceptibility vs Temperature\n"+r"$\gamma = %1.3f, \nu = %1.3f, T_c = %1.3f$" % (i, j, k))
-        plt.legend(loc=0, numpoints=1)
-        plt.savefig("report/graphs/fit-susc-%d/fit-%d.pdf" % (dim,nf))
-        plt.show()
-        nf += 1
-  #"""
-
-  return "Success."
-
-def AutovsN(name, savefile, filename):
-  try:
-    f = open(filename,'r')
-    data = json.loads(f.read())
-    f.close()
-  except Exception as e:
-    return str(e)
-
-  print("T = %f" % (1/data["Beta"]))
-  auto_fun = abs(array(data["Autocorrelation"][name]))
-
-  plt.plot(linspace(0,data["AutoT"][1]-data["AutoT"][0],len(auto_fun)), auto_fun, "r-", linewidth=1.2)
-  plt.title(r"Autocorrelation function vs Simulation steps")
-  try:
-    if data["Metropolis"]:
-      plt.xlabel("Simulation steps per lattice point")
-    else:
-      plt.xlabel("Simulation steps")
-  except:
-    plt.xlabel("Simulation steps")
-  plt.savefig(savefile)
-  plt.show()
-  return "Success."
-
-def CorrvsT(end, savefile, filenames):
-  try:
-    data = []
-    for filename in filenames:
-      f = open(filename,'r')
-      data.append(json.loads(f.read()))
-      f.close()
-  except Exception as e:
-    return str(e)
-
-  end = int(end)
-
-  M_l = {}
-  for i in range(len(filenames)):
-    if data[i]["Size"] == 20: continue
-    auto_fun = array(data[i]["Autocorrelation"]["M"])
-    t = linspace(0,data[i]["AutoT"][1]-data[i]["AutoT"][0],auto_fun.size)
-    y = trapz(auto_fun[:end], t[:end])
-
-    if not data[i]["Size"] in M_l:
-      M_l[data[i]["Size"]] = [[],[],[],[]]
-    if not 1/data[i]["Beta"] in M_l[data[i]["Size"]][0]:
-      M_l[data[i]["Size"]][0].append(1/data[i]["Beta"])
-      M_l[data[i]["Size"]][1].append(y)
-      M_l[data[i]["Size"]][2].append(1)
-      M_l[data[i]["Size"]][3].append(y**2)
-    else:
-      ind = M_l[data[i]["Size"]][0].index(1/data[i]["Beta"])
-      M_l[data[i]["Size"]][1][ind] += y
-      M_l[data[i]["Size"]][2][ind] += 1
-      M_l[data[i]["Size"]][3][ind] += y**2
-    del auto_fun
-    del t
-
-  del data
-  plt.title("Correlation time vs Temperature")
-  plt.xlabel(r"Temperature / $T^*$")
-  plt.ylabel(r"Correlation time / $\tau(T)$")
-
-  for i in M_l:
-    x = array(M_l[i][0])
-    y = array(M_l[i][1])
-    N = array(M_l[i][2])
-    z = array(M_l[i][3])
-    y = y/N
-    z = z/N
-    ind = argsort(x)
-    x2 = x[ind]
-    y2 = y[ind]
-    z2 = z[ind]
-    M_l[i][0] = x2
-    M_l[i][1] = y2
-    M_l[i][3] = sqrt(z2-y2*y2)
-
-  plt.xlim([1.5,3.0])
-  for m in M_l:
-    plt.plot(M_l[m][0], M_l[m][1], color[m], label="L = %d" % m, linewidth=1.2)
-    #plt.errorbar(M_l[m][0], M_l[m][1], fmt=".", yerr=M_l[m][3], label="L = %d" % m, linewidth=1.2)
-    plt.fill_between(M_l[m][0], M_l[m][1]-M_l[m][3], M_l[m][1]+M_l[m][3], interpolate=True, color=color[m][0])
-
-  plt.legend(loc=0, numpoints=1)
-  plt.savefig(savefile)
-  plt.show()
   return "Success."
 
 def ParseInput(argv):
   if len(argv) > 1:
-    if argv[1] == "-MvsN":
-      print(MagnetizationVsStep(sys.argv[2], sys.argv[3:]))
-    elif argv[1] == "-MvsT":
-      print(MagnetizationVsT(sys.argv[2], sys.argv[3], sys.argv[4:]))
-    elif argv[1] == "-EvsN":
-      print(EnergyVsStep(sys.argv[2], sys.argv[3:]))
-    elif argv[1] == "-EvsT":
-      print(EnergyVsT(sys.argv[2], sys.argv[3], sys.argv[4:]))
-    elif argv[1] == "-XvsT":
-      print(SuscVsT(sys.argv[2], sys.argv[3], sys.argv[4:]))
-    elif argv[1] == "-CvsT":
-      print(HeatVsT(sys.argv[2], sys.argv[3], sys.argv[4:]))
-    elif argv[1] == "-AvsN":
-      print(AutovsN(sys.argv[2], sys.argv[3], sys.argv[4]))
-    elif argv[1] == "-TauvsT":
-      print(CorrvsT(sys.argv[2], sys.argv[3], sys.argv[4:]))
+    if argv[1] == "-cwd":
+      print(CWDistance(sys.argv[2], sys.argv[3:]))
+    elif argv[1] == "-avd":
+      print(AverageDisplacement(sys.argv[2], sys.argv[3:]))
+    elif argv[1] == "-force":
+      print(ComputeForce(sys.argv[2], sys.argv[3:]))
+    elif argv[1] == "-cwm":
+      print(LongModesCW(sys.argv[2], sys.argv[3:]))
+    elif argv[1] == "-sm":
+      print(StringModes(sys.argv[2], sys.argv[3:]))
+    elif argv[1] == "-len":
+      print(StringLength(sys.argv[2], sys.argv[3:]))
     else:
       print("Wrong argument.")
 
